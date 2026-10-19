@@ -170,7 +170,11 @@ td.n { text-align: right; }
 .slot b { display: block; color: var(--sub); font-size: 16px; }
 .slot p { margin: 2px 0 0; font-size: 14px; }
 
-footer { text-align: center; font-size: 12px; color: var(--mute); padding: 0 0 40px; }
+footer { text-align: center; font-size: 12px; color: var(--mute); padding: 0 20px 40px; display: grid; gap: 4px; }
+footer p { margin: 0; }
+footer .credit { font-size: 14px; color: var(--sub); }
+footer .credit b { color: var(--text); font-weight: 700; }
+footer .credit .kr { font-size: 11px; color: var(--blue); background: var(--blue-soft); padding: 2px 8px; border-radius: 999px; margin-left: 4px; vertical-align: 1px; }
 
 /* Thông báo nhỏ khi bấm tải */
 .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 16px); opacity: 0; background: var(--text); color: var(--bg); padding: 12px 18px; border-radius: 999px; font-size: 14px; font-weight: 600; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 30; max-width: calc(100% - 40px); text-align: center; }
@@ -227,7 +231,10 @@ footer { text-align: center; font-size: 12px; color: var(--mute); padding: 0 0 4
   <div class="wrap" id="tools"></div>
 </main>
 
-<footer>Kho Tool Đối Soát · số liệu trong file mẫu là dữ liệu giả lập để chạy thử</footer>
+<footer>
+  <p class="credit">Phát triển bởi <b>Nguyễn Viết Dương</b> <span class="kr">개발자</span></p>
+  <p>Kho Tool Đối Soát · số liệu trong file mẫu là dữ liệu giả lập để chạy thử</p>
+</footer>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="tools.js"></script>
