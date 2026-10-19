@@ -5,142 +5,303 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Kho Tool Đối Soát</title>
 <meta name="description" content="Tải các tool WPS cho đối soát giao nhận phụ tùng: Tool Đối Soát NCC ↔ MB51 kèm file mẫu và hướng dẫn.">
+<meta name="theme-color" content="#f2f4f6">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Be+Vietnam+Pro:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@500;700&display=swap">
 <style>
-/* Bố cục: phiếu nhận hàng — dải tiêu đề mực xanh, mỗi tool là 1 "phiếu" 2 cột (thông tin | ô tải) */
+/* Phong cách app Hàn (Toss / Kakao): nền xám nhạt, thẻ trắng bo 24px, 1 màu nhấn xanh, chữ đậm khít, pastel cho trạng thái.
+   Bố cục: thanh trên dính -> hero (chữ to + mô phỏng sheet Tổng hợp) -> thẻ tool (thông tin | danh sách tải) -> 5 bước -> ví dụ kết quả -> ô tool tiếp theo */
 :root {
-  --paper: #f3f5f2; --sheet: #ffffff; --ink: #14233d; --ink-soft: #4b5a72; --rule: #d5dbe2;
-  --band: #14233d; --band-fg: #eef2f7; --go: #0b7a48; --go-fg: #ffffff; --go-soft: #dff1e7;
-  --warn: #9a5a00; --warn-soft: #fbecc8; --bad: #a3122a; --bad-soft: #fbdde2;
-  --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
-  --f-body: "Be Vietnam Pro", "Segoe UI", system-ui, sans-serif;
-  --f-mono: "JetBrains Mono", "Consolas", "Courier New", monospace;
+  --bg: #f2f4f6;
+  --card: #ffffff;
+  --text: #191f28;
+  --sub: #4e5968;
+  --mute: #8b95a1;
+  --line: #e5e8eb;
+  --fill: #f2f4f6;
+  --blue: #3182f6;
+  --blue-press: #1b64da;
+  --blue-soft: #e8f3ff;
+  --on-blue: #ffffff;
+  --mint: #03b26c; --mint-soft: #e5f8ef;
+  --peach: #e06d00; --peach-soft: #fff3e5;
+  --rose: #f04452; --rose-soft: #ffeeef;
+  --shadow: 0 2px 6px rgba(0, 25, 60, .04), 0 12px 32px rgba(0, 25, 60, .06);
+  --r-lg: 24px; --r-md: 16px; --r-sm: 12px;
+  --f: "Be Vietnam Pro", "Pretendard", "Segoe UI", system-ui, sans-serif;
+  --f-kr: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #0f1622; --sheet: #172131; --ink: #e6ebf2; --ink-soft: #9aa8bc; --rule: #2a374b;
-    --band: #0a1220; --band-fg: #e6ebf2; --go: #2fb87a; --go-fg: #06140d; --go-soft: #133426;
-    --warn: #f0b24a; --warn-soft: #3a2c10; --bad: #ff7d8f; --bad-soft: #3d1820;
+    --bg: #101013; --card: #1c1c21; --text: #f2f4f6; --sub: #b0b8c1; --mute: #7e8691; --line: #2c2c34; --fill: #26262d;
+    --blue: #4c96ff; --blue-press: #3182f6; --blue-soft: #1a2a42; --on-blue: #ffffff;
+    --mint: #3fd38f; --mint-soft: #133024; --peach: #ffa24c; --peach-soft: #3a2914; --rose: #ff6b76; --rose-soft: #3d1c20;
+    --shadow: 0 2px 6px rgba(0, 0, 0, .3), 0 12px 32px rgba(0, 0, 0, .25);
     color-scheme: dark;
   }
 }
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
-.wrap { max-width: 1080px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-.band { background: var(--band); color: var(--band-fg); }
-.band .wrap { padding-block: 28px 24px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
-.band h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(30px, 5vw, 44px); letter-spacing: .01em; line-height: 1; margin: 0; text-wrap: balance; }
-.band p { margin: 8px 0 0; opacity: .75; max-width: 60ch; }
-.band .meta { font-family: var(--f-mono); font-size: 12px; display: flex; gap: 18px; flex-wrap: wrap; opacity: .8; }
-.band .meta b { font-weight: 600; }
-main .wrap { padding-block: 28px 56px; display: grid; gap: 28px; }
-.label { font-family: var(--f-display); font-weight: 600; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
-.tool { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
-.tool-info { padding: 26px 28px; display: grid; gap: 18px; min-width: 0; }
-.tool-head { display: grid; gap: 6px; }
-.tool-head h2 { font-family: var(--f-display); font-weight: 700; font-size: 30px; line-height: 1.05; margin: 0; text-wrap: balance; }
-.tool-head .sub { display: flex; flex-wrap: wrap; gap: 8px 14px; font-family: var(--f-mono); font-size: 12px; color: var(--ink-soft); }
-.tool-info > p { margin: 0; max-width: 65ch; }
-.features { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 22px; }
-.features li { padding-left: 18px; position: relative; font-size: 14px; }
-.features li::before { content: ""; position: absolute; left: 0; top: .62em; width: 8px; height: 8px; border-radius: 2px; background: var(--go); }
-.dl { border-left: 1px solid var(--rule); padding: 26px 24px; display: flex; flex-direction: column; gap: 12px; background: color-mix(in srgb, var(--paper) 55%, var(--sheet)); border-radius: 0 6px 6px 0; }
-.btn { border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 5px; padding: 10px 12px; font: 500 14px/1.3 var(--f-body); text-decoration: none; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.btn:hover { border-color: var(--ink-soft); }
-.btn:focus-visible { outline: 3px solid color-mix(in srgb, var(--go) 55%, transparent); outline-offset: 2px; }
-.btn .sz { font-family: var(--f-mono); font-size: 11px; color: var(--ink-soft); white-space: nowrap; }
-.btn.primary { background: var(--go); border-color: var(--go); color: var(--go-fg); padding: 14px 16px; font-family: var(--f-display); font-weight: 700; font-size: 20px; letter-spacing: .03em; text-transform: uppercase; }
-.btn.primary .sz { color: inherit; opacity: .85; }
-.dl .small { font-size: 12px; color: var(--ink-soft); margin: 0; }
-.detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); gap: 28px; }
-.panel { display: grid; gap: 12px; align-content: start; min-width: 0; }
-ol.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 10px; }
-ol.steps li { counter-increment: s; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; align-items: baseline; }
-ol.steps li::before { content: counter(s); font-family: var(--f-display); font-weight: 700; font-size: 18px; color: var(--go); border: 1.5px solid var(--go); border-radius: 50%; width: 28px; height: 28px; display: grid; place-items: center; line-height: 1; }
-.req { font-size: 13px; color: var(--ink-soft); margin: 4px 0 0; }
-.table-scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--sheet); }
-table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
-th { font-family: var(--f-display); font-weight: 600; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; text-align: left; color: var(--ink-soft); padding: 9px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
-td { padding: 8px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
-tr:last-child td { border-bottom: 0; }
-td.num { text-align: right; } td.code { font-family: var(--f-mono); font-size: 12px; }
-.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 500; }
-.pill.ok { background: var(--go-soft); color: var(--go); } .pill.bad { background: var(--bad-soft); color: var(--bad); } .pill.warn { background: var(--warn-soft); color: var(--warn); }
-.note { font-size: 12px; color: var(--ink-soft); margin: 0; }
-ul.changes { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
-.slot { border: 1.5px dashed var(--rule); border-radius: 6px; padding: 20px 24px; display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: baseline; justify-content: space-between; color: var(--ink-soft); }
-.slot strong { font-family: var(--f-display); font-size: 20px; color: var(--ink); font-weight: 600; }
-.slot p { margin: 0; max-width: 62ch; font-size: 14px; }
-@media (max-width: 820px) {
-  .tool, .detail, .features { grid-template-columns: minmax(0, 1fr); }
-  .dl { border-left: 0; border-top: 1px solid var(--rule); border-radius: 0 0 6px 6px; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--f); font-size: 16px; line-height: 1.6; letter-spacing: -0.01em; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+.kr { font-family: var(--f-kr); letter-spacing: 0; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid color-mix(in srgb, var(--blue) 45%, transparent); outline-offset: 3px; border-radius: 10px; }
+
+/* Thanh trên */
+.top { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px); }
+.top .wrap { height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; letter-spacing: -0.03em; text-decoration: none; }
+.logo i { width: 30px; height: 30px; border-radius: 10px; background: var(--blue); display: grid; place-items: center; }
+.logo i::before { content: ""; width: 12px; height: 12px; border: 2.5px solid var(--on-blue); border-radius: 3px; box-shadow: 4px 4px 0 -1px var(--blue), 4px 4px 0 1px var(--on-blue); }
+.logo .kr { font-size: 12px; font-weight: 500; color: var(--mute); }
+.top .cta { text-decoration: none; font-weight: 700; font-size: 14px; color: var(--blue); background: var(--blue-soft); padding: 8px 14px; border-radius: 999px; white-space: nowrap; }
+
+/* Hero */
+.hero .wrap { padding-block: 40px 28px; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 36px; align-items: center; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--blue); background: var(--blue-soft); padding: 6px 12px; border-radius: 999px; }
+.eyebrow .kr { font-weight: 500; opacity: .8; }
+.hero h1 { font-size: clamp(32px, 5.2vw, 52px); line-height: 1.18; font-weight: 800; letter-spacing: -0.045em; margin: 16px 0 14px; text-wrap: balance; }
+.hero h1 em { font-style: normal; color: var(--blue); }
+.hero .lead { font-size: 17px; color: var(--sub); margin: 0 0 26px; max-width: 34em; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.hero-meta { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--mute); }
+.hero-meta b { color: var(--sub); font-weight: 600; }
+
+/* Nút */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; font-weight: 700; font-size: 16px; border-radius: 999px; padding: 15px 26px; border: 0; cursor: pointer; transition: transform .12s ease, background-color .15s ease; -webkit-tap-highlight-color: transparent; }
+.btn:active { transform: scale(.97); }
+.btn-primary { background: var(--blue); color: var(--on-blue); box-shadow: 0 8px 20px color-mix(in srgb, var(--blue) 28%, transparent); }
+.btn-primary:hover { background: var(--blue-press); }
+.btn-ghost { background: var(--card); color: var(--text); box-shadow: var(--shadow); }
+.btn small { font-weight: 500; font-size: 13px; opacity: .8; }
+.btn svg { width: 18px; height: 18px; }
+
+/* Mô phỏng sheet Tổng hợp */
+.mock { background: var(--card); border-radius: var(--r-lg); box-shadow: var(--shadow); padding: 18px 18px 44px; position: relative; min-width: 0; margin-bottom: 18px; }
+.mock-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+.mock-bar span { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+.mock-bar b { margin-left: 8px; font-size: 13px; font-weight: 700; color: var(--sub); }
+.mock-row { display: grid; grid-template-columns: 1.4fr .8fr .8fr 1.3fr; gap: 8px; align-items: center; padding: 10px 12px; border-radius: var(--r-sm); font-size: 13px; font-variant-numeric: tabular-nums; }
+.mock-row + .mock-row { margin-top: 6px; }
+.mock-row.h { color: var(--mute); font-size: 12px; font-weight: 600; padding-block: 4px; }
+.mock-row .po { font-weight: 600; }
+.mock-row .n { text-align: right; color: var(--sub); }
+.mock-row.ok { background: var(--mint-soft); } .mock-row.bad { background: var(--rose-soft); } .mock-row.warn { background: var(--peach-soft); }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; justify-self: start; }
+.chip.ok { color: var(--mint); background: color-mix(in srgb, var(--mint) 14%, transparent); }
+.chip.bad { color: var(--rose); background: color-mix(in srgb, var(--rose) 14%, transparent); }
+.chip.warn { color: var(--peach); background: color-mix(in srgb, var(--peach) 14%, transparent); }
+.float-badge { position: absolute; right: -10px; bottom: -22px; background: var(--card); box-shadow: var(--shadow); border-radius: var(--r-md); padding: 12px 14px; display: flex; gap: 10px; align-items: center; font-size: 13px; }
+.float-badge i { width: 34px; height: 34px; border-radius: 11px; background: var(--blue-soft); color: var(--blue); display: grid; place-items: center; font-style: normal; font-weight: 800; }
+.float-badge b { display: block; font-size: 15px; }
+.float-badge span { color: var(--mute); }
+
+/* Khối chung */
+main .wrap { padding-block: 24px 64px; display: grid; gap: 20px; }
+.section-title { display: flex; align-items: baseline; gap: 10px; margin: 26px 4px 2px; }
+.section-title h2 { font-size: 24px; font-weight: 800; letter-spacing: -0.035em; margin: 0; }
+.section-title .kr { font-size: 13px; color: var(--mute); }
+.card { background: var(--card); border-radius: var(--r-lg); box-shadow: var(--shadow); }
+
+/* Thẻ tool */
+.tool { display: grid; grid-template-columns: minmax(0, 1fr) 340px; overflow: hidden; }
+.tool-info { padding: 30px 32px; display: grid; gap: 20px; align-content: start; min-width: 0; }
+.tool-head { display: flex; gap: 16px; align-items: center; }
+.app-icon { flex: none; width: 60px; height: 60px; border-radius: 18px; background: linear-gradient(145deg, color-mix(in srgb, var(--blue) 85%, #fff), var(--blue)); display: grid; place-items: center; color: var(--on-blue); font-weight: 800; font-size: 15px; letter-spacing: -0.02em; box-shadow: 0 8px 18px color-mix(in srgb, var(--blue) 30%, transparent); }
+.tool-head h3 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.035em; line-height: 1.25; text-wrap: balance; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.tag { font-size: 12px; font-weight: 600; color: var(--sub); background: var(--fill); padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+.tag.blue { color: var(--blue); background: var(--blue-soft); }
+.tool-info > p { margin: 0; color: var(--sub); max-width: 38em; }
+.features { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.features li { display: flex; gap: 10px; align-items: flex-start; background: var(--fill); border-radius: var(--r-sm); padding: 12px 14px; font-size: 14px; line-height: 1.5; }
+.features li::before { content: ""; flex: none; width: 20px; height: 20px; margin-top: 1px; border-radius: 50%; background: var(--blue) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M6 10.2l2.6 2.6L14 7.4' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 20px no-repeat; }
+
+/* Danh sách tải */
+.dl { background: var(--fill); padding: 30px 24px; display: flex; flex-direction: column; gap: 14px; }
+.dl .btn { width: 100%; padding: 17px 20px; font-size: 17px; }
+.dl .hint { font-size: 13px; color: var(--mute); text-align: center; margin: -4px 0 4px; }
+.dl-label { font-size: 13px; font-weight: 700; color: var(--mute); margin: 6px 4px 0; }
+.list { background: var(--card); border-radius: var(--r-md); overflow: hidden; }
+.row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; text-decoration: none; transition: background-color .15s; }
+.row + .row { border-top: 1px solid var(--line); }
+.row:hover { background: color-mix(in srgb, var(--fill) 60%, transparent); }
+.row:active { background: var(--fill); }
+.ext { flex: none; width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; }
+.ext.xlsm, .ext.xlsx { background: var(--mint-soft); color: var(--mint); }
+.ext.txt { background: var(--fill); color: var(--sub); }
+.ext.zip { background: var(--blue-soft); color: var(--blue); }
+.row .t { flex: 1; min-width: 0; }
+.row .t b { display: block; font-size: 15px; font-weight: 600; }
+.row .t span { display: block; font-size: 12px; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .go { flex: none; color: var(--mute); }
+
+/* 5 bước */
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; counter-reset: s; }
+.steps li { counter-increment: s; background: var(--card); border-radius: var(--r-md); box-shadow: var(--shadow); padding: 18px 16px 20px; display: grid; gap: 10px; align-content: start; font-size: 14px; color: var(--sub); line-height: 1.5; }
+.steps li::before { content: counter(s); width: 32px; height: 32px; border-radius: 50%; background: var(--blue-soft); color: var(--blue); font-weight: 800; display: grid; place-items: center; }
+.steps li b { color: var(--text); font-weight: 700; }
+
+/* Ví dụ + có gì mới */
+.two { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.news-card { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 8px 28px; align-items: start; }
+.news-card h4 { grid-column: 1 / -1; }
+.news-card .req { margin-top: 0; }
+.pad { padding: 24px; }
+.table-scroll { overflow-x: auto; margin: 0 -8px; }
+table { width: 100%; border-collapse: separate; border-spacing: 0 6px; font-size: 14px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-size: 12px; font-weight: 600; color: var(--mute); padding: 0 12px 2px; white-space: nowrap; }
+td { padding: 11px 12px; background: var(--fill); white-space: nowrap; }
+td:first-child { border-radius: 12px 0 0 12px; font-weight: 600; } td:last-child { border-radius: 0 12px 12px 0; }
+td.n { text-align: right; }
+.note { font-size: 13px; color: var(--mute); margin: 10px 0 0; }
+.card h4 { margin: 0 0 14px; font-size: 17px; font-weight: 800; letter-spacing: -0.02em; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.new { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.new li { display: flex; gap: 10px; font-size: 14px; color: var(--sub); line-height: 1.5; }
+.new li::before { content: "NEW"; flex: none; font-size: 10px; font-weight: 800; color: var(--rose); background: var(--rose-soft); padding: 3px 7px; border-radius: 6px; height: fit-content; margin-top: 2px; }
+.req { margin-top: 16px; padding: 14px 16px; border-radius: var(--r-sm); background: var(--blue-soft); color: var(--blue); font-size: 13px; font-weight: 500; line-height: 1.5; }
+
+/* Ô tool tiếp theo */
+.slot { border: 2px dashed var(--line); border-radius: var(--r-lg); padding: 26px; display: flex; gap: 16px; align-items: center; color: var(--mute); }
+.slot i { flex: none; width: 48px; height: 48px; border-radius: 16px; background: var(--card); display: grid; place-items: center; font-style: normal; font-size: 26px; font-weight: 300; color: var(--mute); }
+.slot b { display: block; color: var(--sub); font-size: 16px; }
+.slot p { margin: 2px 0 0; font-size: 14px; }
+
+footer { text-align: center; font-size: 12px; color: var(--mute); padding: 0 0 40px; }
+
+/* Thông báo nhỏ khi bấm tải */
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 16px); opacity: 0; background: var(--text); color: var(--bg); padding: 12px 18px; border-radius: 999px; font-size: 14px; font-weight: 600; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 30; max-width: calc(100% - 40px); text-align: center; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 900px) {
+  .hero .wrap { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .tool, .two, .news-card { grid-template-columns: minmax(0, 1fr); }
+  .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (prefers-reduced-motion: no-preference) { .btn { transition: border-color .15s, filter .15s; } .btn.primary:hover { filter: brightness(1.08); } }
+@media (max-width: 560px) {
+  .features { grid-template-columns: minmax(0, 1fr); }
+  .steps { grid-template-columns: minmax(0, 1fr); }
+  .tool-info { padding: 24px 20px; }
+  .dl { padding: 22px 16px; }
+  .mock-row { grid-template-columns: 1.3fr .7fr 1.2fr; } .mock-row .gr { display: none; }
+  .float-badge { right: 8px; }
+  .top .logo .kr { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .btn, .row, .toast { transition: none; } }
 </style>
 </head>
 <body>
-<header class="band">
+
+<header class="top">
   <div class="wrap">
-    <div>
-      <h1>Kho Tool Đối Soát</h1>
-      <p>Tool chạy trên WPS Spreadsheets cho khâu giao nhận phụ tùng: đối chiếu NCC đã giao với GR trên SAP MB51.</p>
-    </div>
-    <div class="meta" id="meta"></div>
+    <a class="logo" href="#"><i></i>Kho Tool <span class="kr">도구함</span></a>
+    <a class="cta" href="#tools">Tải tool</a>
   </div>
 </header>
-<main><div class="wrap" id="list"></div></main>
+
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">Đối soát giao nhận phụ tùng <span class="kr">· 대사 도구</span></span>
+      <h1>NCC giao bao nhiêu, GR được bao nhiêu, <em>một nút là biết.</em></h1>
+      <p class="lead">Tool chạy trên WPS Spreadsheets: đối chiếu số lượng nhà cung cấp đã giao với GR trên SAP MB51 theo từng SA/PO, kiểm tra đủ bộ cầu cho từng xe.</p>
+      <div class="hero-actions" id="heroActions"></div>
+      <div class="hero-meta" id="heroMeta"></div>
+    </div>
+    <div class="mock" aria-hidden="true">
+      <div class="mock-bar"><span></span><span></span><span></span><b>Tổng hợp</b></div>
+      <div class="mock-row h"><span>SA/PO</span><span class="n">NCC</span><span class="n gr">GR</span><span>Trạng thái</span></div>
+      <div class="mock-row ok"><span class="po">5500012301</span><span class="n">160</span><span class="n gr">160</span><span class="chip ok">Khớp</span></div>
+      <div class="mock-row bad"><span class="po">5500012302</span><span class="n">160</span><span class="n gr">157</span><span class="chip bad">GR thiếu 3</span></div>
+      <div class="mock-row warn"><span class="po">5500012303</span><span class="n">156</span><span class="n gr">156</span><span class="chip warn">Lệch bộ cầu</span></div>
+      <div class="mock-row ok"><span class="po">5500012304</span><span class="n">160</span><span class="n gr">160</span><span class="chip ok">Khớp</span></div>
+      <div class="float-badge"><i>4×4</i><div><b>16 cái / chuyến</b><span>4 xe × 4 mã cầu</span></div></div>
+    </div>
+  </div>
+</section>
+
+<main>
+  <div class="wrap" id="tools"></div>
+</main>
+
+<footer>Kho Tool Đối Soát · số liệu trong file mẫu là dữ liệu giả lập để chạy thử</footer>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
 <script src="tools.js"></script>
 <script>
 (function () {
   var TOOLS = window.TOOLS || [];
+  var ICON_DL = '<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 3v10m0 0l-4-4m4 4l4-4M4 16h12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var ICON_GO = '<svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 4v9m0 0l-3.5-3.5M10 13l3.5-3.5M5 16h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function kb(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB"; }
-  function pill(v) { var p = String(v).split("|"); return '<span class="pill ' + esc(p[0]) + '">' + esc(p[1]) + "</span>"; }
-  function link(f, cls, text) { return '<a class="btn' + cls + '" href="' + esc(f.url) + '" download="' + esc(f.name) + '"><span>' + text + '</span><span class="sz">.' + esc(f.kind) + ' · ' + kb(f.size) + '</span></a>'; }
+  function chip(v) { var p = String(v).split("|"); return '<span class="chip ' + esc(p[0]) + '">' + esc(p[1]) + "</span>"; }
+  function dlAttr(f) { return 'href="' + esc(f.url) + '" download="' + esc(f.name) + '" data-name="' + esc(f.name) + '"'; }
 
-  document.getElementById("meta").innerHTML =
-    "<span><b>" + TOOLS.length + "</b> tool</span><span>WPS Office · macro JS</span><span>Cập nhật <b>" + esc(TOOLS[0] ? TOOLS[0].version : "") + "</b></span>";
+  var first = TOOLS[0];
+  if (first) {
+    var m = first.files[0];
+    document.getElementById("heroActions").innerHTML =
+      '<a class="btn btn-primary" ' + dlAttr(m) + '>' + ICON_DL + 'Tải tool về <small>' + kb(m.size) + '</small></a>' +
+      '<a class="btn btn-ghost" href="#' + esc(first.id) + '">Xem chi tiết</a>';
+    document.getElementById("heroMeta").innerHTML =
+      "<span>Phiên bản <b>" + esc(first.version) + "</b></span><span>Chạy trên <b>WPS Office</b></span><span><b>Miễn phí</b>, không cần đăng nhập</span>";
+  }
 
-  var html = "";
+  var html = '<div class="section-title"><h2>Tool có sẵn</h2><span class="kr">도구 목록</span></div>';
   TOOLS.forEach(function (t) {
     var main = t.files[0], extra = t.files.slice(1);
-    html += '<div class="label">Tool</div>' +
-      '<article class="tool" id="' + esc(t.id) + '">' +
+    html +=
+      '<article class="card tool" id="' + esc(t.id) + '">' +
         '<div class="tool-info">' +
-          '<div class="tool-head"><h2>' + esc(t.name) + '</h2>' +
-            '<div class="sub"><span>' + esc(t.code) + '.xlsm</span><span>Phiên bản ' + esc(t.version) + '</span><span>' + esc(t.platform) + '</span></div></div>' +
+          '<div class="tool-head"><div class="app-icon">XLSM</div><div>' +
+            '<h3>' + esc(t.name) + '</h3>' +
+            '<div class="tags"><span class="tag blue">v' + esc(t.version) + '</span><span class="tag">' + esc(t.platform) + '</span><span class="tag">' + esc(t.code) + '.xlsm</span></div>' +
+          '</div></div>' +
           '<p>' + esc(t.summary) + '</p>' +
           '<ul class="features">' + t.features.map(function (f) { return "<li>" + esc(f) + "</li>"; }).join("") + '</ul>' +
         '</div>' +
         '<div class="dl">' +
-          link(main, " primary", "Tải tool về") +
-          '<p class="small">Gồm ' + esc(t.code) + '.xlsm, 2 file mẫu, mã nguồn và hướng dẫn. Không cần đăng nhập.</p>' +
-          '<div class="label" style="margin-top:6px">Tải lẻ từng file</div>' +
-          extra.map(function (f) { return link(f, "", esc(f.label)); }).join("") +
+          '<a class="btn btn-primary" ' + dlAttr(main) + '>' + ICON_DL + 'Tải bộ đầy đủ <small>.zip · ' + kb(main.size) + '</small></a>' +
+          '<p class="hint">Gồm tool, 2 file mẫu, mã nguồn và hướng dẫn</p>' +
+          '<div class="dl-label">Tải lẻ từng file</div>' +
+          '<div class="list">' + extra.map(function (f) {
+            return '<a class="row" ' + dlAttr(f) + '><span class="ext ' + esc(f.kind) + '">' + esc(f.kind) + '</span>' +
+              '<span class="t"><b>' + esc(f.label) + '</b><span>' + esc(f.name) + ' · ' + kb(f.size) + '</span></span><span class="go">' + ICON_GO + '</span></a>';
+          }).join("") + '</div>' +
         '</div>' +
       '</article>' +
-      '<section class="detail">' +
-        '<div class="panel"><div class="label">Cách dùng</div>' +
-          '<ol class="steps">' + t.steps.map(function (s) { return "<li><span>" + esc(s) + "</span></li>"; }).join("") + '</ol>' +
-          '<p class="req">Cần WPS Office có macro JS. Không mở bằng Microsoft Excel vì Excel không chạy được macro của WPS.</p>' +
-          '<div class="label" style="margin-top:10px">Có gì mới</div>' +
-          '<ul class="changes">' + t.changes.map(function (c) { return "<li>" + esc(c) + "</li>"; }).join("") + '</ul>' +
+      '<div class="section-title"><h2>Dùng trong 5 bước</h2><span class="kr">사용 방법</span></div>' +
+      '<ol class="steps">' + t.steps.map(function (s) { return "<li><span>" + esc(s) + "</span></li>"; }).join("") + '</ol>' +
+      '<div class="section-title"><h2>Kết quả trông như thế này</h2><span class="kr">결과 미리보기</span></div>' +
+      '<div class="two">' +
+        '<div class="card pad"><div class="table-scroll"><table><thead><tr>' + t.sample.head.map(function (h) { return "<th>" + esc(h) + "</th>"; }).join("") + '</tr></thead><tbody>' +
+          t.sample.rows.map(function (r) {
+            return "<tr><td>" + esc(r[0]) + "</td><td>" + esc(r[1]) + "</td><td class=\"n\">" + r[2] + "</td><td class=\"n\">" + r[3] + "</td><td class=\"n\">" + r[4] + "</td><td>" + chip(r[5]) + "</td><td>" + chip(r[6]) + "</td></tr>";
+          }).join("") +
+        '</tbody></table></div><p class="note">' + esc(t.sample.note) + '. Sheet Tổng hợp thật còn có số mã cầu, số xe giao, số xe đã GR và link sang sheet chi tiết.</p></div>' +
+        '<div class="card pad news-card"><h4>Có gì mới <span class="tag blue">v' + esc(t.version) + '</span></h4>' +
+          '<ul class="new">' + t.changes.map(function (c) { return "<li>" + esc(c) + "</li>"; }).join("") + '</ul>' +
+          '<div class="req">Cần WPS Office có macro JS và bật macro khi mở file. Microsoft Excel không chạy được macro của WPS.</div>' +
         '</div>' +
-        '<div class="panel"><div class="label">Kết quả trông như thế này</div>' +
-          '<div class="table-scroll"><table><thead><tr>' + t.sample.head.map(function (h) { return "<th>" + esc(h) + "</th>"; }).join("") + '</tr></thead><tbody>' +
-            t.sample.rows.map(function (r) {
-              return "<tr><td class=\"code\">" + esc(r[0]) + "</td><td>" + esc(r[1]) + "</td><td class=\"num\">" + r[2] + "</td><td class=\"num\">" + r[3] + "</td><td class=\"num\">" + r[4] + "</td><td>" + pill(r[5]) + "</td><td>" + pill(r[6]) + "</td></tr>";
-            }).join("") +
-          '</tbody></table></div>' +
-          '<p class="note">' + esc(t.sample.note) + '. Sheet Tổng hợp thật có thêm cột số mã cầu, số xe giao, số xe đã GR và link sang sheet chi tiết.</p>' +
-        '</div>' +
-      '</section>';
+      '</div>';
   });
-  html += '<div class="slot"><strong>Chỗ cho tool tiếp theo</strong><p>Kho này đọc danh sách từ một file dữ liệu, nên tool mới sẽ hiện thêm một phiếu như trên kèm nút tải riêng.</p></div>';
-  document.getElementById("list").innerHTML = html;
+  html += '<div class="slot"><i>+</i><div><b>Chỗ cho tool tiếp theo</b><p>Tool mới sẽ hiện thêm một thẻ như trên, kèm nút tải riêng.</p></div></div>';
+  document.getElementById("tools").innerHTML = html;
+
+  // Thông báo nhỏ khi bấm tải
+  var toast = document.getElementById("toast"), timer;
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest("a[download]");
+    if (!a) return;
+    toast.textContent = "Đang tải " + a.getAttribute("data-name") + "…";
+    toast.classList.add("show");
+    clearTimeout(timer);
+    timer = setTimeout(function () { toast.classList.remove("show"); }, 2200);
+  });
 })();
 </script>
 </body>
