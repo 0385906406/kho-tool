@@ -1,0 +1,1095 @@
+/* =====================================================================
+   TOOL ĐỐI SOÁT NCC  <->  MB51 (GR)  --  BẢN JAVASCRIPT (JSA) CHO WPS
+   ---------------------------------------------------------------------
+   CÁCH DÙNG (file ToolDoiSoat.xlsm đã có sẵn code + giao diện):
+    1. Mở file bằng WPS (bật macro nếu được hỏi).
+    2. Sheet Control: bấm "Chọn file NCC..." / "Chọn file MB51..." (hoặc dán đường dẫn
+       vào 2 ô vàng). Các ô cột để "Tự động" -> tool tự nhận cột theo dòng tiêu đề.
+    3. Bấm nút "CHECK CHÊNH LỆCH" -> ra kết quả:
+         Control -> Tổng hợp -> Cảnh báo (nếu có) -> sheet chi tiết từng SA/PO lệch -> NCC_Data -> MB51_Data
+    4. Bấm "LƯU KẾT QUẢ" để xuất kết quả ra 1 file .xlsx riêng (lưu lịch sử theo ngày).
+    * Mỗi lần CHECK, tool CHỈ xóa các sheet do nó tạo (Tổng hợp, Cảnh báo, NCC_Data,
+      MB51_Data, sheet chi tiết). Sheet riêng của bạn được giữ nguyên.
+    * Sheet Control được KHÓA: chỉ sửa được các ô vàng. Muốn mở khóa: Review -> Unprotect Sheet.
+    * Dán code vào file khác: Alt+F11 -> Module1 -> Ctrl+A, Delete -> dán file này
+      -> chạy "caiDatGiaoDien" một lần để tạo giao diện + các nút.
+   ===================================================================== */
+
+// Khai báo biến dùng chung (JSA không cho GÁN giá trị ngoài hàm, chỉ khai báo trống).
+// LƯU Ý: không đặt tên biến trùng hằng có sẵn của WPS (xlCenter, xlContinuous...) -> lỗi "already been declared".
+var CTRL, SUM_NAME, WARN_NAME, DATA_N, DATA_M, DETAIL_TAG, AUTO;
+var R_PATH, R_SHEET, R_START, R_MAT, R_PO, R_BB, R_SEQ, R_QTY, R_CAR, R_BATCH, R_CODES, R_TRIP, R_NOTE, MAX_DETAIL, SUM_NC, C_NCC, C_MB, SEP, PASS, DEF, COL_LIST, KW, MODELS, NO_CAR;
+var K_CENTER, K_LEFT, K_LINE, V_INPUT, V_WHOLE, V_LIST, V_STOP, V_BETWEEN;
+var CLR_GREEN_BG, CLR_GREEN_FT, CLR_RED_BG, CLR_RED_FT, CLR_WARN_BG, CLR_WARN_FT, CLR_HDR_BG, CLR_HDR2_BG, CLR_WHITE, CLR_YELLOW, CLR_LBLUE, CLR_GRAY;
+
+function initK() {
+    CTRL = "Control"; SUM_NAME = "Tổng hợp"; WARN_NAME = "Cảnh báo";
+    DATA_N = "NCC_Data"; DATA_M = "MB51_Data";
+    DETAIL_TAG = "ĐỐI SOÁT CHI TIẾT";   // ô A1 của sheet chi tiết bắt đầu bằng chữ này -> tool nhận ra sheet của nó
+    AUTO = "Tự động";
+    R_PATH = 4; R_SHEET = 5; R_START = 6; R_MAT = 7; R_PO = 8; R_BB = 9; R_SEQ = 10; R_QTY = 11; R_CAR = 12; R_BATCH = 13; R_CODES = 14; R_TRIP = 15; R_NOTE = 17;
+    MAX_DETAIL = 30;    // tối đa số sheet chi tiết (tránh tạo hàng trăm sheet, chạy chậm)
+    SUM_NC = 11;        // số cột bảng PO trên sheet Tổng hợp (A..K)
+    // Dòng xe VinFast (thứ tự hiển thị). Tên trong file viết hoa/thường, có/không dấu cách đều nhận (VD "vf7pro" = "VF7 Pro").
+    MODELS = ["VF5", "VF6", "VF7", "VF7 Pro", "VF8", "VF9", "Limo"];
+    NO_CAR = "(chưa gán)";
+    C_NCC = 2; C_MB = 3; SEP = "\u0001";
+    PASS = "";   // mật khẩu khóa sheet Control ("" = không mật khẩu, chỉ chống sửa nhầm)
+    // Giá trị mặc định từng dòng: [NCC, MB51]
+    DEF = {};
+    DEF[R_SHEET] = ["Sheet1", "Sheet1"]; DEF[R_START] = [2, 2];
+    DEF[R_MAT] = [AUTO, AUTO]; DEF[R_PO] = [AUTO, AUTO]; DEF[R_BB] = [AUTO, AUTO];
+    DEF[R_SEQ] = ["-", "-"]; DEF[R_QTY] = [AUTO, AUTO]; DEF[R_CAR] = [AUTO, AUTO]; DEF[R_BATCH] = [5]; DEF[R_CODES] = [4]; DEF[R_TRIP] = [4];
+    COL_LIST = colList();
+    // Từ khóa nhận cột theo tiêu đề: key = khớp, excl = loại trừ (VD "Material Description")
+    KW = {
+        mat: { label: "Material", key: ["material", "mã material", "ma material", "mã vật tư", "ma vat tu", "vật tư", "vat tu", "mã hàng", "ma hang", "matnr", "part no", "part number", "mã linh kiện", "ma linh kien"],
+               excl: ["desc", "document", "doc.", "mô tả", "mo ta", "tên", "group", "type", "nhóm"] },
+        po:  { label: "PO/SA", key: ["po/sa", "sa/po", "po", "sa", "purchase order", "purchasing document", "purchasing doc", "pur. doc", "po number", "số po", "so po", "đơn hàng", "don hang", "scheduling agreement"],
+               excl: ["item", "date", "ngày", "ngay", "type"] },
+        bb:  { label: "Số BB", key: ["số bb", "so bb", "bb", "biên bản", "bien ban", "số biên bản", "so bien ban", "reference", "ref", "ref.", "delivery note"],
+               excl: ["date", "ngày", "ngay"] },
+        qty: { label: "Số lượng", key: ["số lượng", "so luong", "sl", "quantity", "qty", "qty in une", "quantity in une", "qty in un. of entry"],
+               excl: ["unit", "đơn vị", "don vi", "uom", "price", "amount", "giá"] },
+        car: { label: "Dòng xe", key: ["dòng xe", "dong xe", "loại xe", "loai xe", "model", "car model", "vehicle", "xe", "dự án", "du an", "project"],
+               excl: ["date", "ngày", "ngay"] }
+    };
+    K_CENTER = -4108; K_LEFT = -4131; K_LINE = 1;
+    V_INPUT = 0; V_WHOLE = 1; V_LIST = 3; V_STOP = 1; V_BETWEEN = 1;
+    CLR_GREEN_BG = rgb(198, 239, 206); CLR_GREEN_FT = rgb(0, 97, 0);
+    CLR_RED_BG = rgb(255, 199, 206); CLR_RED_FT = rgb(156, 0, 6);
+    CLR_WARN_BG = rgb(255, 235, 156); CLR_WARN_FT = rgb(156, 87, 0);
+    CLR_HDR_BG = rgb(0, 32, 96); CLR_HDR2_BG = rgb(68, 114, 196);
+    CLR_WHITE = rgb(255, 255, 255); CLR_YELLOW = rgb(255, 242, 204); CLR_LBLUE = rgb(221, 235, 247);
+    CLR_GRAY = rgb(217, 217, 217);
+}
+
+// "A,B,...,Z,AA,...,AZ" cho danh sách chọn cột
+function colList() {
+    var a = [], i, j;
+    for (i = 0; i < 26; i++) a.push(String.fromCharCode(65 + i));
+    for (j = 0; j < 26; j++) a.push("A" + String.fromCharCode(65 + j));
+    return a.join(",");
+}
+
+function rgb(r, g, b) { return r + g * 256 + b * 65536; }
+
+// ========================= CÁC NÚT BẤM =========================
+// Nút "CHECK CHÊNH LỆCH"
+function main() {
+    initK();
+    try { Application.ScreenUpdating = false; } catch (e) {}
+    try { Application.DisplayAlerts = false; } catch (e) {}
+    try {
+        runCheck();
+    } catch (err) {
+        msg("Lỗi: " + (err && err.message ? err.message : String(err)));
+    }
+    try { var c = getSheet(thisWB(), CTRL); if (c) protectSheet(c); } catch (e) {}
+    try { Application.ScreenUpdating = true; } catch (e) {}
+    try { Application.DisplayAlerts = true; } catch (e) {}
+}
+
+// Nút "Chọn file NCC..." / "Chọn file MB51..."
+function chonFileNCC() { initK(); chonFile(C_NCC, "Chọn file NCC"); }
+function chonFileMB51() { initK(); chonFile(C_MB, "Chọn file MB51"); }
+function chonFile(c, title) {
+    var ws = ensureControl(thisWB());
+    try {
+        var f = pickFile(title);
+        if (f !== "") setV(ws, R_PATH, c, f);
+    } finally { protectSheet(ws); }
+}
+
+// Nút "LƯU KẾT QUẢ": xuất các sheet kết quả ra 1 file .xlsx riêng
+function luuKetQua() {
+    initK();
+    var wb = thisWB();
+    if (!getSheet(wb, SUM_NAME)) { msg("Chưa có kết quả. Hãy bấm CHECK CHÊNH LỆCH trước."); return; }
+    var def = wb.Path + "\\DoiSoat_" + dateStamp() + ".xlsx", path = "";
+    try {
+        var f = Application.GetSaveAsFilename(def, "Excel (*.xlsx),*.xlsx", 1, "Lưu kết quả đối soát");
+        if (f !== false && f !== null && f !== undefined && String(f) !== "" && String(f) !== "False") path = String(f);
+    } catch (e) { path = def; }
+    if (path === "") return;
+    try {
+        exportResult(path);
+        msg("Đã lưu kết quả:\n" + path);
+    } catch (err) {
+        msg("Lỗi khi lưu: " + (err && err.message ? err.message : String(err)));
+    }
+}
+
+// Dựng lại giao diện sheet Control (khóa ô, danh sách chọn, các nút) mà không chạy đối soát
+function caiDatGiaoDien() {
+    initK();
+    var ws = ensureControl(thisWB());
+    protectSheet(ws);
+    ws.Activate();
+}
+
+// ========================= ĐỐI SOÁT =========================
+function runCheck() {
+    var t0 = new Date().getTime();
+    var TWB = thisWB();
+    var ws = ensureControl(TWB);
+
+    var nPath = trimStr(getV(ws, R_PATH, C_NCC));
+    var mPath = trimStr(getV(ws, R_PATH, C_MB));
+    if (nPath === "") { var f1 = pickFile("Chọn file NCC"); if (f1 !== "") { setV(ws, R_PATH, C_NCC, f1); nPath = f1; } }
+    if (mPath === "") { var f2 = pickFile("Chọn file MB51"); if (f2 !== "") { setV(ws, R_PATH, C_MB, f2); mPath = f2; } }
+    if (nPath === "" || mPath === "") {
+        ws.Activate();
+        msg("Chưa có đường dẫn file.\n\nBấm 'Chọn file NCC' và 'Chọn file MB51' (hoặc dán đường dẫn vào 2 ô vàng), rồi bấm CHECK CHÊNH LỆCH.");
+        return;
+    }
+    var batch = toNum(getV(ws, R_BATCH, C_NCC)); if (batch < 1) batch = 5;
+    var codesPerCar = Math.max(0, Math.floor(toNum(getV(ws, R_CODES, C_NCC))));   // 1 xe = N mã cầu (0 = tắt)
+    var carsPerTrip = Math.max(0, Math.floor(toNum(getV(ws, R_TRIP, C_NCC))));    // 1 chuyến (BB) = M xe (0 = tắt)
+
+    // Đọc 2 file (đọc cả vùng 1 lần) + nhận cột + lọc dòng lỗi
+    var warns = [];
+    var srcN = readSource(ws, C_NCC, nPath, "NCC"), srcM = readSource(ws, C_MB, mPath, "MB51");
+    var N = cleanRows(srcN, "NCC", warns), M = cleanRows(srcM, "MB51", warns);
+    if (N.length === 0) { msg("File NCC không có dữ liệu hợp lệ.\n" + nPath); return; }
+    if (M.length === 0) { msg("File MB51 không có dữ liệu hợp lệ.\n" + mPath); return; }
+
+    // Gom theo SA/PO -> từng material bên trong PO
+    var byPO = {}, pos = [], i, r, o, p;
+    function add(arr, side) {
+        for (i = 0; i < arr.length; i++) {
+            r = arr[i]; p = byPO[r.po];
+            if (!p) { p = byPO[r.po] = { n: {}, m: {}, inN: {}, inM: {}, mats: [], seen: {}, rowsN: [], rowsM: [] }; pos.push(r.po); }
+            if (!p.seen[r.mat]) { p.seen[r.mat] = 1; p.mats.push(r.mat); }
+            if (side === "N") { p.n[r.mat] = (p.n[r.mat] || 0) + r.qty; p.inN[r.mat] = 1; p.rowsN.push(r); }
+            else { p.m[r.mat] = (p.m[r.mat] || 0) + r.qty; p.inM[r.mat] = 1; p.rowsM.push(r); }
+        }
+    }
+    add(N, "N"); add(M, "M");
+    var carOf = carOfPO(N, M), hasCar = srcN.hasCar || srcM.hasCar;
+    pos.sort(function (a, b) { return carRank(carOf[a] || NO_CAR) - carRank(carOf[b] || NO_CAR) || cmpVal(carOf[a] || "", carOf[b] || "") || cmpVal(a, b); });
+
+    clearResultSheets(TWB);
+    try { ws.Range(ws.Cells.Item(22, 1), ws.Cells.Item(600, 7)).Clear(); } catch (eC) {}   // xóa bảng tóm tắt kiểu cũ trên Control
+
+    // Kiểm tra bộ cầu từng PO + sheet chi tiết cho PO có vấn đề (lệch SL, 1 bên, lệch bộ, chuyến lỗi)
+    var sheetOf = {}, boOf = {}, j, mat, bad, nBo = 0, nSheet = 0, skipped = 0;
+    for (i = 0; i < pos.length; i++) {
+        o = byPO[pos[i]]; o.mats.sort(cmpVal); bad = false;
+        for (j = 0; j < o.mats.length; j++) {
+            mat = o.mats[j];
+            if (!o.inN[mat] || !o.inM[mat] || round6((o.n[mat] || 0) - (o.m[mat] || 0)) !== 0) { bad = true; break; }
+        }
+        boOf[pos[i]] = checkBo(o, codesPerCar, carsPerTrip);
+        if (!boOf[pos[i]].ok) { bad = true; nBo++; }
+        if (!bad) continue;
+        if (nSheet >= MAX_DETAIL) { skipped++; continue; }
+        sheetOf[pos[i]] = makeDetailSheet(TWB, pos[i], o, batch, carOf[pos[i]] || "", boOf[pos[i]]);
+        nSheet++;
+    }
+
+    writeDataSheet(TWB, DATA_N, N, "NCC");
+    writeDataSheet(TWB, DATA_M, M, "MB51");
+    var colNote = "Cột NCC: " + srcN.colInfo + "   |   Cột MB51: " + srcM.colInfo;
+    var res = writeSummary(TWB, ws, N, M, sheetOf, warns.length, hasCar ? carOf : null, pos, boOf, codesPerCar, colNote);
+    if (warns.length) writeWarnings(TWB, res.ws, warns);
+
+    // Thông báo gọn
+    var secs = Math.round((new Date().getTime() - t0) / 100) / 10;
+    var s = "Đối soát xong " + pos.length + " SA/PO  (" + secs + " giây)\n\n" +
+        "✔ Khớp: " + res.khop + "     ✘ Lệch: " + res.lech + "     ⚠ Một bên: " + res.motBen;
+    if (codesPerCar > 0) {
+        s += "\nBộ cầu: " + (nBo ? nBo + " PO lệch bộ / chuyến lỗi" : "tất cả đủ bộ") + "   (" + res.xeNCC + " xe đã giao)";
+        if (nBo * 2 > pos.length) s += "\n→ Quá nửa PO lỗi bộ: kiểm tra 'Số mã cầu / 1 xe' (đặt 0 nếu dữ liệu không theo bộ).";
+    }
+    if (warns.length) s += "\n⚠ " + warns.length + " dòng dữ liệu lỗi (sheet " + WARN_NAME + ")";
+    if (skipped) s += "\n(Chỉ tạo " + MAX_DETAIL + " sheet chi tiết, " + skipped + " PO còn lại xem ở Tổng hợp)";
+    msg(s);
+    res.ws.Activate();
+}
+
+// Kiểm tra bộ cầu 1 PO: 1 xe = codesPerCar mã (mỗi mã 1 cái); 1 chuyến (1 BB) = carsPerTrip xe
+// Trả về { ok, nCodes, carsN, carsM, issues[], trips[{bb, qty{mat:sl}, total, note}], nTripBad }
+function checkBo(o, codesPerCar, carsPerTrip) {
+    var res = { ok: true, nCodes: 0, carsN: "", carsM: "", issues: [], trips: [], nTripBad: 0, cpc: codesPerCar, cpt: carsPerTrip };
+    var nN = 0, nM = 0, i, mat, q, minN = -1, maxN = 0, minM = -1;
+    for (i = 0; i < o.mats.length; i++) {
+        mat = o.mats[i];
+        if (o.inN[mat]) { nN++; q = o.n[mat] || 0; if (minN < 0 || q < minN) minN = q; if (q > maxN) maxN = q; }
+        if (o.inM[mat]) { nM++; q = o.m[mat] || 0; if (minM < 0 || q < minM) minM = q; }
+    }
+    res.nCodes = nN;
+    if (codesPerCar <= 0) return res;   // tắt kiểm tra bộ
+    // Số xe = số bộ đủ = SL nhỏ nhất trong các mã (thiếu mã -> 0 xe)
+    res.carsN = nN >= codesPerCar ? Math.max(0, minN) : 0;
+    res.carsM = nM >= codesPerCar ? Math.max(0, minM) : 0;
+    if (nN && nN !== codesPerCar) res.issues.push("Thiếu mã " + nN + "/" + codesPerCar);
+    else if (nN && round6(maxN - minN) !== 0) res.issues.push("Lệch bộ (" + minN + "–" + maxN + " cái/mã)");
+
+    // Từng chuyến (BB) của NCC: đủ mã? các mã bằng nhau? tổng = codesPerCar x carsPerTrip?
+    var byBB = {}, bbs = [], r, t, k, cnt, mn, mx, notes, need = codesPerCar * carsPerTrip;
+    for (i = 0; i < o.rowsN.length; i++) {
+        r = o.rowsN[i];
+        if (!byBB[r.bb]) { byBB[r.bb] = { bb: r.bb, qty: {}, total: 0 }; bbs.push(r.bb); }
+        byBB[r.bb].qty[r.mat] = (byBB[r.bb].qty[r.mat] || 0) + r.qty; byBB[r.bb].total += r.qty;
+    }
+    bbs.sort(cmpVal);
+    for (i = 0; i < bbs.length; i++) {
+        t = byBB[bbs[i]]; cnt = 0; mn = -1; mx = 0; notes = [];
+        for (k in t.qty) if (t.qty.hasOwnProperty(k)) { cnt++; if (mn < 0 || t.qty[k] < mn) mn = t.qty[k]; if (t.qty[k] > mx) mx = t.qty[k]; }
+        if (cnt !== codesPerCar) notes.push("có " + cnt + "/" + codesPerCar + " mã");
+        else if (round6(mx - mn) !== 0) notes.push("các mã không bằng nhau (" + mn + "–" + mx + ")");
+        if (carsPerTrip > 0 && round6(t.total - need) !== 0) notes.push("tổng " + t.total + "/" + need + " cái");
+        t.note = notes.join("; ");
+        if (t.note) res.nTripBad++;
+        res.trips.push(t);
+    }
+    if (res.nTripBad) res.issues.push("Chuyến lỗi: " + res.nTripBad);
+    res.ok = res.issues.length === 0;
+    return res;
+}
+
+// Đọc file nguồn theo thông số trên Control; trả về { rows: [{r, mat, po, bb, qty}], colInfo }
+function readSource(ws, c, path, label) {
+    var sheetName = trimStr(getV(ws, R_SHEET, c));
+    var startRow = toNum(getV(ws, R_START, c)); if (startRow < 1) startRow = 1;
+    var hdrRow = startRow - 1;
+    var setting = { mat: getV(ws, R_MAT, c), po: getV(ws, R_PO, c), bb: getV(ws, R_BB, c), qty: getV(ws, R_QTY, c), car: getV(ws, R_CAR, c) };
+
+    var wb;
+    try { wb = Application.Workbooks.Open(path, false, true); }
+    catch (e) { throw new Error("Không mở được file " + label + ":\n" + path); }
+    var out = { rows: [], colInfo: "" };
+    try {
+        var src = getSheet(wb, sheetName);
+        if (!src) throw new Error("Không tìm thấy sheet '" + sheetName + "' trong file " + label + ":\n" + path);
+        var ur = src.UsedRange;
+        var lastRow = ur.Row + ur.Rows.Count - 1, lastCol = ur.Column + ur.Columns.Count - 1;
+
+        // Dòng tiêu đề (để tự nhận cột)
+        var hdr = [];
+        if (hdrRow >= 1) hdr = readBlock(src, hdrRow, hdrRow, lastCol)[0] || [];
+
+        // Xác định cột
+        var cols = {}, used = {}, k, order = ["qty", "bb", "po", "mat"], info = [];
+        for (k = 0; k < order.length; k++) {
+            var key = order[k], sv = trimStr(setting[key]);
+            if (sv === "" || sv === AUTO) {
+                cols[key] = detectCol(hdr, KW[key], used);
+                if (cols[key] === 0)
+                    throw new Error("File " + label + ": không tự nhận được cột '" + KW[key].label + "' từ dòng tiêu đề (dòng " + hdrRow + ").\n" +
+                        "Hãy chọn chữ cái cột cho '" + KW[key].label + "' trên sheet Control, hoặc kiểm tra 'Dòng bắt đầu đọc'.");
+            } else {
+                cols[key] = colIndex(sv);
+                if (cols[key] === 0) throw new Error("File " + label + ": cột '" + KW[key].label + "' không hợp lệ: '" + sv + "'.");
+            }
+            used[cols[key]] = 1;
+        }
+        // Cột Dòng xe: KHÔNG bắt buộc ("-" = không có; tự động không thấy thì bỏ qua)
+        var sc = trimStr(setting.car);
+        if (sc === "-") cols.car = 0;
+        else if (sc === "" || sc === AUTO) cols.car = detectCol(hdr, KW.car, used);
+        else cols.car = colIndex(sc);
+        order = ["mat", "po", "bb", "qty", "car"];
+        for (k = 0; k < order.length; k++) {
+            if (!cols[order[k]]) { info.push(KW[order[k]].label + "=(không có)"); continue; }
+            info.push(KW[order[k]].label + "=" + colLetter(cols[order[k]]) + (hdr[cols[order[k]] - 1] ? " (\"" + trimStr(hdr[cols[order[k]] - 1]) + "\")" : ""));
+        }
+        out.colInfo = info.join(", ");
+        out.hasCar = cols.car > 0;
+
+        // Đọc dữ liệu theo khối (nhanh hơn đọc từng ô rất nhiều)
+        var maxCol = Math.max(lastCol, cols.mat, cols.po, cols.bb, cols.qty, cols.car), r1, r2, blk, i, row, CH = 20000;
+        for (r1 = startRow; r1 <= lastRow; r1 += CH) {
+            r2 = Math.min(r1 + CH - 1, lastRow);
+            blk = readBlock(src, r1, r2, maxCol);
+            for (i = 0; i < blk.length; i++) {
+                row = blk[i];
+                out.rows.push({ r: r1 + i, mat: row[cols.mat - 1], po: row[cols.po - 1], bb: row[cols.bb - 1], qty: row[cols.qty - 1],
+                    car: cols.car ? row[cols.car - 1] : "" });
+            }
+        }
+    } finally { try { wb.Close(false); } catch (e3) {} }
+    return out;
+}
+
+// Đọc 1 vùng -> mảng 2 chiều (chỉ số từ 0)
+function readBlock(ws, r1, r2, nCol) {
+    var v = ws.Range(ws.Cells.Item(r1, 1), ws.Cells.Item(r2, nCol)).Value2;
+    if (!Array.isArray(v)) return [[v]];
+    if (v.length && !Array.isArray(v[0])) return [v];
+    return v;
+}
+
+// Tìm cột theo tiêu đề: khớp nguyên văn > khớp nguyên từ > chứa cụm từ; bỏ cột đã dùng / có từ loại trừ
+function detectCol(hdr, kw, used) {
+    var best = 0, bestScore = 0, c, h, toks, s, i, k;
+    for (c = 0; c < hdr.length; c++) {
+        if (used[c + 1]) continue;
+        h = trimStr(hdr[c]).toLowerCase();
+        if (h === "") continue;
+        var skip = false;
+        for (i = 0; i < kw.excl.length; i++) if (h.indexOf(kw.excl[i]) >= 0) { skip = true; break; }
+        if (skip) continue;
+        toks = h.split(/[\s\/\(\)\.,\-_:#]+/);
+        s = 0;
+        for (i = 0; i < kw.key.length; i++) {
+            k = kw.key[i];
+            if (h === k) s = Math.max(s, 100);
+            else if (k.indexOf(" ") < 0 && toks.indexOf(k) >= 0) s = Math.max(s, 50);
+            else if (k.length >= 4 && h.indexOf(k) >= 0) s = Math.max(s, 30);
+        }
+        if (s > bestScore) { bestScore = s; best = c + 1; }
+    }
+    return best;
+}
+
+// Làm sạch: bỏ dòng trống, ghi cảnh báo dòng lỗi (kèm số dòng trong file gốc)
+function cleanRows(src, label, warns) {
+    var out = [], i, x, mat, po, bb, q, qty, raw, prob;
+    for (i = 0; i < src.rows.length; i++) {
+        x = src.rows[i];
+        mat = cleanKey(x.mat); po = cleanKey(x.po); bb = cleanKey(x.bb);
+        raw = (x.qty === null || x.qty === undefined) ? "" : x.qty;
+        if (mat === "" && po === "" && bb === "" && trimStr(raw) === "") continue;   // dòng trống
+        prob = [];
+        qty = 0;
+        if (typeof raw === "number") qty = raw;
+        else if (trimStr(raw) === "") prob.push("Số lượng trống (tính = 0)");
+        else { q = Number(trimStr(raw)); if (isNaN(q)) prob.push("Số lượng không phải số (tính = 0)"); else qty = q; }
+        if (po === "") prob.push("Thiếu PO/SA -> BỎ QUA dòng này");
+        if (mat === "") prob.push("Thiếu Material");
+        if (bb === "") prob.push("Thiếu số BB");
+        if (prob.length) warns.push([label, x.r, mat, po, bb, raw, prob.join("; ")]);
+        if (po === "") continue;
+        out.push({ r: x.r, mat: mat, po: po, bb: bb, qty: qty, car: normCar(x.car) });
+    }
+    return out;
+}
+
+// Chuẩn hóa tên dòng xe: "vf7pro" / "VF7 PRO" -> "VF7 Pro"; tên lạ giữ nguyên
+function normCar(v) {
+    var s = cleanKey(v), k = s.replace(/\s+/g, "").toLowerCase(), i;
+    if (s === "") return "";
+    for (i = 0; i < MODELS.length; i++) if (MODELS[i].replace(/\s+/g, "").toLowerCase() === k) return MODELS[i];
+    return s;
+}
+
+// Thứ tự dòng xe: theo MODELS, xe lạ sau, "(chưa gán)" cuối
+function carRank(c) {
+    var i = MODELS.indexOf(c);
+    if (i >= 0) return i;
+    return c === NO_CAR || c === "" ? 999 : 500;
+}
+
+// Dòng xe của từng PO: lấy từ NCC trước, thiếu thì lấy MB51; 1 PO nhiều xe -> ghép "A / B"
+function carOfPO(N, M) {
+    var out = {}, list = {}, i, r, a;
+    function add(arr) {
+        for (i = 0; i < arr.length; i++) {
+            r = arr[i]; if (!r.car) continue;
+            a = list[r.po] || (list[r.po] = []);
+            if (a.indexOf(r.car) < 0) a.push(r.car);
+        }
+    }
+    add(N); add(M);
+    for (r in list) if (list.hasOwnProperty(r)) out[r] = list[r].join(" / ");
+    return out;
+}
+
+// Sheet dữ liệu: Material | PO/SA | Số BB | Số lượng | Dòng file gốc | Dòng xe  (dòng 1 = tiêu đề)
+function writeDataSheet(wb, name, rows, label) {
+    var ws = addSheetLast(wb);
+    ws.Name = name;
+    try { ws.Range("C:C").NumberFormat = "@"; } catch (e) {}   // giữ số BB dạng chữ (0011)
+    var data = [["Material", "PO/SA", "Số BB", "Số lượng (" + label + ")", "Dòng file gốc", "Dòng xe"]], i;
+    for (i = 0; i < rows.length; i++) data.push([toCell(rows[i].mat), toCell(rows[i].po), rows[i].bb, rows[i].qty, rows[i].r, rows[i].car]);
+    writeBlock(ws, 1, data, 6);
+    fmtHeader(ws, 1, 6);
+    autoFit(ws, 6);
+}
+
+// Ghi mảng 2 chiều theo khối
+function writeBlock(ws, rStart, data, nCol) {
+    var start, end, CH = 5000;
+    for (start = 0; start < data.length; start += CH) {
+        end = Math.min(start + CH, data.length);
+        ws.Range(ws.Cells.Item(rStart + start, 1), ws.Cells.Item(rStart + end - 1, nCol)).Value2 = data.slice(start, end);
+    }
+}
+
+// Mã toàn số (<=15 chữ số, không bắt đầu bằng 0) ghi dạng SỐ để SUMIFS khớp; còn lại giữ chữ
+function toCell(s) { return /^[1-9][0-9]{0,14}$/.test(s) ? Number(s) : s; }
+
+// So sánh: số theo số, chữ theo chữ
+function cmpVal(a, b) {
+    var na = Number(a), nb = Number(b);
+    if (a !== "" && b !== "" && !isNaN(na) && !isNaN(nb)) return na - nb;
+    a = String(a); b = String(b);
+    return a < b ? -1 : (a > b ? 1 : 0);
+}
+
+// Trạng thái 1 PO -> [chữ, loại màu]
+function poStatus(inN, inM, gap) {
+    if (!inM) return ["⚠ Chưa GR (chỉ có NCC)", "warn"];
+    if (!inN) return ["⚠ Chỉ có GR (NCC không có)", "warn"];
+    if (round6(gap) === 0) return ["✔ Khớp", "ok"];
+    return [gap > 0 ? "✘ NCC thừa / GR thiếu" : "✘ GR thừa / NCC thiếu", "bad"];
+}
+
+// Thêm sheet mới vào CUỐI
+function addSheetLast(wb) {
+    return wb.Worksheets.Add(null, wb.Worksheets.Item(wb.Worksheets.Count));
+}
+
+// ========================= SHEET CONTROL =========================
+function ensureControl(wb) {
+    var ws = getSheet(wb, CTRL);
+    if (ws) {
+        unprotectSheet(ws);
+    } else {
+        ws = wb.Worksheets.Add(wb.Worksheets.Item(1));
+        ws.Name = CTRL;
+        buildControl(ws);
+    }
+    applyUI(ws);
+    return ws;
+}
+
+// Khóa/mở ô + danh sách chọn + gợi ý mặc định + các nút (chạy lại mỗi lần, không đổi giá trị người dùng nhập)
+function applyUI(ws) {
+    try { ws.Cells.Locked = true; } catch (e) {}
+    var c, r, d, f, cell, dataRows = [R_MAT, R_PO, R_BB, R_SEQ, R_QTY, R_CAR];
+    // Dòng "Cột: Dòng xe" (thêm sau) - file Control cũ chưa có thì điền nhãn + mặc định
+    setV(ws, R_CAR, 1, "Cột: Dòng xe");
+    for (c = C_NCC; c <= C_MB; c++) if (trimStr(getV(ws, R_CAR, c)) === "") setV(ws, R_CAR, c, DEF[R_CAR][c - C_NCC]);
+    try {
+        var bx = ws.Range(ws.Cells.Item(3, 1), ws.Cells.Item(R_CAR, 3));
+        bx.Borders.LineStyle = K_LINE; bx.Borders.Color = rgb(180, 180, 180);
+    } catch (eB) {}
+    for (c = C_NCC; c <= C_MB; c++) {
+        f = (c === C_NCC) ? "NCC" : "MB51";
+        unlock(ws.Cells.Item(R_PATH, c));
+        addVal(ws.Cells.Item(R_PATH, c), V_INPUT, null, null, "Đường dẫn file " + f,
+            "Bấm nút 'Chọn file " + f + "' hoặc dán đường dẫn đầy đủ, VD: D:\\Data\\" + f + ".xlsx");
+        unlock(ws.Cells.Item(R_SHEET, c));
+        addVal(ws.Cells.Item(R_SHEET, c), V_INPUT, null, null, "Tên sheet chứa dữ liệu",
+            "Mặc định: " + DEF[R_SHEET][c - C_NCC]);
+        unlock(ws.Cells.Item(R_START, c));
+        addVal(ws.Cells.Item(R_START, c), V_WHOLE, "1", "1048576", "Dòng bắt đầu đọc",
+            "Dòng dữ liệu đầu tiên. Dòng ngay trên là dòng TIÊU ĐỀ (dùng để tự nhận cột). Mặc định: " + DEF[R_START][c - C_NCC]);
+        for (r = 0; r < dataRows.length; r++) {
+            d = DEF[dataRows[r]][c - C_NCC];
+            cell = ws.Cells.Item(dataRows[r], c);
+            unlock(cell); cell.Interior.Color = CLR_YELLOW;
+            if (dataRows[r] === R_SEQ)
+                addVal(cell, V_LIST, "-," + COL_LIST, null, "Cột Seq (không bắt buộc)", "Tool không dùng cột này để tính. Để '-' nếu không có.");
+            else if (dataRows[r] === R_CAR)
+                addVal(cell, V_LIST, AUTO + ",-," + COL_LIST, null, "Cột Dòng xe (không bắt buộc)",
+                    "Cột ghi dòng xe: " + MODELS.join(", ") + ". '" + AUTO + "' = tự tìm theo tiêu đề; '-' = file không có cột này.");
+            else
+                addVal(cell, V_LIST, AUTO + "," + COL_LIST, null, "Chọn cột",
+                    "'" + AUTO + "' = tool tự tìm cột theo tiêu đề. Hoặc chọn chữ cái cột. Mặc định: " + d);
+        }
+    }
+    setV(ws, R_BATCH, 1, "Số tờ chuẩn / 1 lần GR");
+    unlock(ws.Cells.Item(R_BATCH, C_NCC));
+    addVal(ws.Cells.Item(R_BATCH, C_NCC), V_WHOLE, "1", "100", "Số tờ chuẩn / 1 lần GR",
+        "Chỉ dùng để CẢNH BÁO khi 1 lần GR gộp khác số tờ. Khoảng BB được chia theo tờ đầu thật trong MB51. Mặc định: " + DEF[R_BATCH][0]);
+
+    // Thông số bộ cầu: 1 xe = N mã cầu, 1 chuyến (1 BB) = M xe. 0 = tắt kiểm tra
+    var par = [[R_CODES, "Số mã cầu / 1 xe", "Mỗi xe cần đủ bao nhiêu mã cầu khác nhau (mỗi mã 1 cái). 0 = tắt kiểm tra bộ. Mặc định: " + DEF[R_CODES][0]],
+               [R_TRIP, "Số xe / 1 chuyến (1 BB)", "1 biên bản (BB) = 1 chuyến giao bao nhiêu xe. VD 4 xe x 4 mã = 16 cái/chuyến. 0 = không kiểm tra chuyến. Mặc định: " + DEF[R_TRIP][0]]], pi;
+    for (pi = 0; pi < par.length; pi++) {
+        var lb = ws.Cells.Item(par[pi][0], 1);
+        lb.Value2 = par[pi][1]; lb.Font.Italic = false; lb.Font.Color = 0;
+        if (trimStr(getV(ws, par[pi][0], C_NCC)) === "") setV(ws, par[pi][0], C_NCC, DEF[par[pi][0]][0]);
+        unlock(ws.Cells.Item(par[pi][0], C_NCC)); ws.Cells.Item(par[pi][0], C_NCC).Interior.Color = CLR_YELLOW;
+        ws.Cells.Item(par[pi][0], C_NCC).HorizontalAlignment = K_LEFT;
+        addVal(ws.Cells.Item(par[pi][0], C_NCC), V_WHOLE, "0", "50", par[pi][1], par[pi][2]);
+    }
+    try { var bp = ws.Range(ws.Cells.Item(R_BATCH, 1), ws.Cells.Item(R_TRIP, 2)); bp.Borders.LineStyle = K_LINE; bp.Borders.Color = rgb(180, 180, 180); } catch (eBP) {}
+    try { ws.Range(ws.Cells.Item(R_TRIP + 1, 1), ws.Cells.Item(R_TRIP + 1, 3)).ClearContents(); } catch (eCN) {}
+
+    setV(ws, 2, 1, "▶ Chọn 2 file (nút bên phải) -> bấm CHECK CHÊNH LỆCH. Cột để '" + AUTO + "' thì tool tự nhận theo tiêu đề.");
+    ws.Cells.Item(2, 1).Font.Bold = true; ws.Cells.Item(2, 1).Font.Color = rgb(192, 0, 0);
+    setV(ws, R_NOTE, 1, "Ghi chú: 1 BB = 1 chuyến giao. BB của MB51 = số BB TỜ ĐẦU khi GR; tool chia khoảng BB của NCC theo các tờ đầu này. Chỉ sửa được ô vàng.");
+    ws.Cells.Item(R_NOTE, 1).Font.Italic = true; ws.Cells.Item(R_NOTE, 1).Font.Color = rgb(110, 110, 110);
+
+    // Ô nhập canh trái hết (số mặc định canh phải -> nhìn lệch so với chữ)
+    try { ws.Range(ws.Cells.Item(R_PATH, C_NCC), ws.Cells.Item(R_CAR, C_MB)).HorizontalAlignment = K_LEFT; } catch (eL) {}
+    try { ws.Cells.Item(R_BATCH, C_NCC).HorizontalAlignment = K_LEFT; } catch (eL2) {}
+
+    // Bảng nút bên phải (cột E): cùng rộng, CHECK nổi bật nhất
+    setColW(ws, 4, 3); setColW(ws, 5, 30);
+    ensureButton(ws, "btnCheck", "CHECK CHÊNH LỆCH", "Module1.main", 3, 6, rgb(0, 128, 64), 15);
+    ensureButton(ws, "btnFileNCC", "📂  Chọn file NCC", "Module1.chonFileNCC", 7, 8, rgb(47, 84, 150), 11);
+    ensureButton(ws, "btnFileMB51", "📂  Chọn file MB51", "Module1.chonFileMB51", 9, 10, rgb(47, 84, 150), 11);
+    ensureButton(ws, "btnSave", "💾  Lưu kết quả (.xlsx)", "Module1.luuKetQua", 12, 13, rgb(0, 32, 96), 11);
+}
+
+// Nút (hình chữ nhật bo góc gán macro) trong cột E, từ dòng rTop đến rBot.
+// Tạo nếu chưa có; nút đã có thì cập nhật lại vị trí, màu, chữ cho đồng bộ.
+function ensureButton(ws, name, text, macro, rTop, rBot, color, size) {
+    var b = null, i;
+    try { for (i = 1; i <= ws.Shapes.Count; i++) if (ws.Shapes.Item(i).Name === name) { b = ws.Shapes.Item(i); break; } } catch (e) {}
+    var cTop = ws.Cells.Item(rTop, 5), cBot = ws.Cells.Item(rBot, 5), gap = 3;
+    var L = cTop.Left + 2, T = cTop.Top + gap, W = cTop.Width - 4, H = cBot.Top + cBot.Height - cTop.Top - 2 * gap;
+    if (!b) { b = ws.Shapes.AddShape(5, L, T, W, H); b.Name = name; }
+    else { try { b.Left = L; b.Top = T; b.Width = W; b.Height = H; } catch (eP) {} }
+    try { b.Fill.Visible = -1; b.Fill.Solid(); b.Fill.ForeColor.RGB = color; } catch (e1) {}
+    try { b.Line.Visible = 0; } catch (e1b) {}
+    try { b.Shadow.Visible = 0; } catch (e1c) {}
+    try {
+        var tf = b.TextFrame2, tr = tf.TextRange;
+        tr.Text = text;
+        tr.Font.Bold = -1; tr.Font.Size = size; tr.Font.Fill.ForeColor.RGB = CLR_WHITE;
+        tr.ParagraphFormat.Alignment = 2;   // giữa
+        tf.VerticalAnchor = 3;              // giữa
+        tf.WordWrap = -1;
+    } catch (e2) {
+        try { b.TextFrame.Characters().Text = text; } catch (e3) {}
+    }
+    try { b.Placement = 3; } catch (e5) {}  // không co giãn theo ô
+    try { b.OnAction = macro; } catch (e4) {}
+}
+
+function unlock(cell) { try { cell.Locked = false; } catch (e) {} }
+
+function addVal(cell, type, f1, f2, title, info) {
+    try {
+        var v = cell.Validation;
+        try { v.Delete(); } catch (e0) {}
+        if (type === V_INPUT) v.Add(type);
+        else if (type === V_LIST) v.Add(type, V_STOP, V_BETWEEN, f1);
+        else v.Add(type, V_STOP, V_BETWEEN, f1, f2);
+        v.IgnoreBlank = true;
+        if (type === V_LIST) v.InCellDropdown = true;
+        v.InputTitle = title; v.InputMessage = info; v.ShowInput = true;
+        v.ErrorTitle = "Giá trị không hợp lệ"; v.ErrorMessage = info; v.ShowError = true;
+    } catch (e) {}
+}
+
+function protectSheet(ws) { try { ws.Protect(PASS, true, true, true); } catch (e) {} }
+function unprotectSheet(ws) { try { ws.Unprotect(PASS); } catch (e) {} }
+
+function buildControl(ws) {
+    ws.Cells.Clear();
+    setV(ws, 1, 1, "TOOL ĐỐI SOÁT NCC  <->  MB51 (GR)");
+    var t = mergeRange(ws, 1, 1, 1, 3);
+    t.Font.Bold = true; t.Font.Size = 14; t.Font.Color = CLR_WHITE;
+    t.Interior.Color = CLR_HDR_BG; t.HorizontalAlignment = K_CENTER;
+    ws.Rows.Item(1).RowHeight = 26;
+
+    setV(ws, 3, 1, "THÔNG SỐ"); setV(ws, 3, 2, "FILE NCC"); setV(ws, 3, 3, "FILE MB51");
+    var h = ws.Range(ws.Cells.Item(3, 1), ws.Cells.Item(3, 3));
+    h.Font.Bold = true; h.Interior.Color = CLR_LBLUE; h.HorizontalAlignment = K_CENTER;
+
+    setV(ws, R_PATH, 1, "Đường dẫn file");
+    setV(ws, R_SHEET, 1, "Tên sheet");
+    setV(ws, R_START, 1, "Dòng bắt đầu đọc");
+    setV(ws, R_MAT, 1, "Cột: Mã material");
+    setV(ws, R_PO, 1, "Cột: Mã PO/SA");
+    setV(ws, R_BB, 1, "Cột: Số biên bản (BB)");
+    setV(ws, R_SEQ, 1, "Cột: Seq");
+    setV(ws, R_QTY, 1, "Cột: Số lượng");
+
+    var rr, rowsDef = [R_SHEET, R_START, R_MAT, R_PO, R_BB, R_SEQ, R_QTY, R_CAR];
+    for (rr = 0; rr < rowsDef.length; rr++) {
+        setV(ws, rowsDef[rr], C_NCC, DEF[rowsDef[rr]][0]);
+        setV(ws, rowsDef[rr], C_MB, DEF[rowsDef[rr]][1]);
+    }
+    setV(ws, R_BATCH, C_NCC, DEF[R_BATCH][0]);
+
+    var inp = ws.Range(ws.Cells.Item(R_PATH, C_NCC), ws.Cells.Item(R_CAR, C_MB));
+    inp.Interior.Color = CLR_YELLOW;
+    ws.Cells.Item(R_BATCH, C_NCC).Interior.Color = CLR_YELLOW;
+
+    var box = ws.Range(ws.Cells.Item(3, 1), ws.Cells.Item(R_CAR, 3));
+    box.Borders.LineStyle = K_LINE; box.Borders.Color = rgb(180, 180, 180);
+
+    setColW(ws, 1, 24); setColW(ws, 2, 40); setColW(ws, 3, 40);
+}
+
+// ========================= SHEET CHI TIẾT 1 SA/PO =========================
+// o = { mats[], n{mat:qty}, m{mat:qty}, inN{}, inM{}, rowsN[], rowsM[] }  (chỉ các dòng của PO này)
+function makeDetailSheet(wb, po, o, batch, car, bo) {
+    var ws = addSheetLast(wb);
+    ws.Name = safeSheetName(wb, po);
+    var NC = 8, r = 1;
+    setV(ws, r, 1, DETAIL_TAG + " — SA/PO: " + po + (car ? "   |   Dòng xe: " + car : ""));
+    var tt = mergeRange(ws, r, 1, r, NC);
+    tt.Font.Bold = true; tt.Font.Size = 13; tt.Font.Color = CLR_WHITE;
+    tt.Interior.Color = CLR_HDR_BG; tt.HorizontalAlignment = K_CENTER;
+    ws.Rows.Item(r).RowHeight = 24;
+    addLink(ws, ws.Cells.Item(2, 1), SUM_NAME, "← Về " + SUM_NAME);
+    r += 2;
+
+    writeRow(ws, r, ["Material", "Tổng NCC", "Tổng GR (MB51)", "Lệch (NCC-GR)", "Trạng thái"]);
+    fmtHeader(ws, r, 5); r++;
+
+    // Mọi material trong PO (cùng mã -> cộng dồn): khớp xanh / lệch đỏ / 1 bên vàng
+    var i, mat, gap, st, cnt = { ok: 0, bad: 0, warn: 0 }, badMats = [];
+    for (i = 0; i < o.mats.length; i++) {
+        mat = o.mats[i];
+        gap = round6((o.n[mat] || 0) - (o.m[mat] || 0));
+        st = poStatus(o.inN[mat], o.inM[mat], gap);
+        try { ws.Cells.Item(r, 1).NumberFormat = "@"; } catch (eM) {}
+        writeRow(ws, r, [mat === "" ? "(trống)" : mat, o.n[mat] || 0, o.m[mat] || 0, gap, st[0]]);
+        colorRowKind(ws, r, 5, st[1]); cnt[st[1]]++;
+        if (st[1] !== "ok") badMats.push(mat);
+        r++;
+    }
+    setV(ws, r, 1, "PO này: " + o.mats.length + " material — " + cnt.ok + " khớp, " + cnt.bad + " lệch, " + cnt.warn + " chỉ có 1 bên.");
+    ws.Cells.Item(r, 1).Font.Italic = true;
+    r += 2;
+
+    // Kiểm tra bộ cầu: 1 xe = cpc mã, 1 chuyến (BB) = cpt xe
+    if (bo && bo.cpc > 0) {
+        setV(ws, r, 1, "► KIỂM TRA BỘ CẦU   (1 xe = " + bo.cpc + " mã cầu" + (bo.cpt > 0 ? ", 1 chuyến = " + bo.cpt + " xe = " + (bo.cpc * bo.cpt) + " cái" : "") + ")");
+        var hk = mergeRange(ws, r, 1, r, NC); hk.Font.Bold = true; hk.Interior.Color = CLR_LBLUE;
+        r++;
+        writeRow(ws, r, ["Số mã cầu", "Xe giao (NCC)", "Xe đã GR", "Kết quả"]);
+        fmtHeader(ws, r, 4); r++;
+        try { ws.Cells.Item(r, 1).NumberFormat = "@"; } catch (eF1) {}   // "4/4" không bị hiểu là ngày
+        writeRow(ws, r, [bo.nCodes + "/" + bo.cpc, bo.carsN, bo.carsM, bo.ok ? "✔ Đủ bộ" : "⚠ " + bo.issues.join("; ")]);
+        try { ws.Cells.Item(r, 1).HorizontalAlignment = K_LEFT; } catch (eA1) {}
+        colorRowKind(ws, r, 4, bo.ok ? "ok" : "warn");
+        r += 2;
+        if (bo.nTripBad) {
+            writeRow(ws, r, ["Chuyến (BB)", "Số mã", "Số lượng từng mã", "Tổng", "Ghi chú"]);
+            fmtHeader(ws, r, 5); r++;
+            var ti, tp, kk, parts, blk = [];
+            for (ti = 0; ti < bo.trips.length; ti++) {
+                tp = bo.trips[ti]; if (!tp.note) continue;
+                parts = [];
+                for (kk in tp.qty) if (tp.qty.hasOwnProperty(kk)) parts.push(kk + ": " + tp.qty[kk]);
+                blk.push([tp.bb, parts.length, parts.join("   "), tp.total, tp.note]);
+            }
+            try { ws.Range(ws.Cells.Item(r, 1), ws.Cells.Item(r + blk.length - 1, 1)).NumberFormat = "@"; } catch (eF2) {}
+            writeBlock(ws, r, blk, 5);   // ghi cả khối 1 lần cho nhanh
+            var tb = ws.Range(ws.Cells.Item(r, 1), ws.Cells.Item(r + blk.length - 1, 5));
+            tb.Interior.Color = CLR_WARN_BG; tb.Font.Color = CLR_WARN_FT; tb.Borders.LineStyle = K_LINE; tb.Borders.Color = rgb(200, 200, 200);
+            r += blk.length;
+            setV(ws, r, 1, (bo.trips.length - bo.nTripBad) + "/" + bo.trips.length + " chuyến còn lại đủ bộ.");
+            ws.Cells.Item(r, 1).Font.Italic = true;
+            r += 2;
+        } else if (bo.trips.length) {
+            setV(ws, r, 1, "Tất cả " + bo.trips.length + " chuyến đều đủ " + bo.cpc + " mã" + (bo.cpt > 0 ? " / " + (bo.cpc * bo.cpt) + " cái." : "."));
+            ws.Cells.Item(r, 1).Font.Italic = true;
+            r += 2;
+        }
+    }
+
+    // Soi từng material lệch: chia khoảng BB theo TỜ ĐẦU thật trong MB51
+    var b;
+    for (b = 0; b < badMats.length; b++) {
+        mat = badMats[b];
+        setV(ws, r, 1, "► Material: " + (mat === "" ? "(trống)" : mat) + "   — chi tiết theo biên bản (BB)");
+        var hb = mergeRange(ws, r, 1, r, NC); hb.Font.Bold = true; hb.Interior.Color = CLR_LBLUE;
+        r++;
+        writeRow(ws, r, ["Khoảng", "BB đầu (tiêu đề GR)", "Các BB trong khoảng", "Số tờ", "NCC giao", "GR (MB51)", "Lệch", "Ghi chú"]);
+        fmtHeader(ws, r, NC); r++;
+
+        var grp = splitByGR(o.rowsN, o.rowsM, mat, batch), g;
+        for (i = 0; i < grp.length; i++) {
+            g = grp[i];
+            try { ws.Cells.Item(r, 2).NumberFormat = "@"; } catch (eF) {}   // giữ số BB dạng chữ (0011)
+            writeRow(ws, r, [i + 1, g.title, showBBs(g.members), g.members.length, g.nSum, g.grQ, round6(g.nSum - g.grQ), g.note]);
+            colorRowKind(ws, r, NC, round6(g.nSum - g.grQ) === 0 ? (g.note ? "warn" : "ok") : "bad");
+            r++;
+        }
+        r++;
+    }
+    autoFit(ws, NC); setColW(ws, 3, 34); setColW(ws, 8, 40);
+    ws.Cells.Item(1, 1).Select();
+    return ws.Name;
+}
+
+// Chia BB của NCC theo các tờ đầu có trong MB51: mỗi BB thuộc tờ đầu gần nhất <= nó
+// rowsN / rowsM: các dòng của 1 PO; lọc thêm theo material
+function splitByGR(rowsN, rowsM, mat, batch) {
+    var dBB = {}, dT = {}, bbs = [], ts = [], i, j, k, out = [], mem, nSum;
+    for (i = 0; i < rowsN.length; i++) if (rowsN[i].mat === mat) {
+        k = rowsN[i].bb; if (dBB[k] === undefined) { dBB[k] = 0; bbs.push(k); } dBB[k] += rowsN[i].qty;
+    }
+    for (i = 0; i < rowsM.length; i++) if (rowsM[i].mat === mat) {
+        k = rowsM[i].bb; if (dT[k] === undefined) { dT[k] = 0; ts.push(k); } dT[k] += rowsM[i].qty;
+    }
+    bbs.sort(cmpVal); ts.sort(cmpVal);
+    function sum(arr) { var s = 0, x; for (x = 0; x < arr.length; x++) s += dBB[arr[x]]; return s; }
+
+    if (ts.length === 0) return [{ title: "—", members: bbs, nSum: sum(bbs), grQ: 0, note: "Chưa GR (MB51 không có material này trong PO)" }];
+
+    mem = [];
+    for (i = 0; i < bbs.length; i++) if (cmpVal(bbs[i], ts[0]) < 0) mem.push(bbs[i]);
+    if (mem.length) out.push({ title: "(trước tờ đầu)", members: mem, nSum: sum(mem), grQ: 0, note: "BB nằm trước tờ đầu GR đầu tiên -> chưa được GR" });
+
+    for (j = 0; j < ts.length; j++) {
+        mem = [];
+        for (i = 0; i < bbs.length; i++)
+            if (cmpVal(bbs[i], ts[j]) >= 0 && (j === ts.length - 1 || cmpVal(bbs[i], ts[j + 1]) < 0)) mem.push(bbs[i]);
+        nSum = sum(mem);
+        var notes = [];
+        if (ts[j] === "") notes.push("GR không có số BB");
+        else if (dBB[ts[j]] === undefined) notes.push("Tờ đầu GR không có trong NCC");
+        if (mem.length === 0) notes.push("NCC không có BB nào trong khoảng");
+        else if (mem.length !== batch) notes.push("Gộp " + mem.length + " tờ (chuẩn " + batch + ")");
+        out.push({ title: ts[j], members: mem, nSum: nSum, grQ: dT[ts[j]], note: notes.join("; ") });
+    }
+    return out;
+}
+
+// Danh sách BB gọn: nhiều quá thì rút "đầu … cuối"
+function showBBs(a) {
+    if (a.length <= 8) return a.join("  ");
+    return a.slice(0, 3).join("  ") + "  …  " + a.slice(a.length - 2).join("  ");
+}
+
+// ========================= SHEET TỔNG HỢP (ngay sau Control) =========================
+// Mỗi SA/PO 1 dòng. NCC giao / GR MB51 = công thức SUMIFS trên 2 sheet dữ liệu (mỗi file = 1 ngày).
+// Cột: A SA/PO | B Dòng xe | C NCC đã giao | D GR (MB51) | E Gap | F Trạng thái |
+//      G Số mã cầu | H Xe giao (NCC) | I Xe đã GR | J Bộ cầu | K Sheet chi tiết
+// Bên phải (cột M..T): bảng tổng theo dòng xe (nếu file có cột Dòng xe)
+function writeSummary(wb, ctrl, N, M, sheetOf, nWarn, carOf, pos, boOf, codesPerCar, colNote) {
+    var sumN = {}, sumM = {}, inN = {}, inM = {}, i, po;
+    function note(arr, dSum, dIn) {
+        for (i = 0; i < arr.length; i++) { po = arr[i].po; dSum[po] = (dSum[po] || 0) + arr[i].qty; dIn[po] = 1; }
+    }
+    note(N, sumN, inN); note(M, sumM, inM);
+    var NC = SUM_NC;
+
+    var ws = wb.Worksheets.Add(null, ctrl);
+    ws.Name = safeSheetName(wb, SUM_NAME);
+    setV(ws, 1, 1, "TỔNG HỢP THEO SA/PO — NCC đã giao vs GR (MB51)   (" + nowStr() + ")");
+    var tt = mergeRange(ws, 1, 1, 1, NC);
+    tt.Font.Bold = true; tt.Font.Size = 13; tt.Font.Color = CLR_WHITE;
+    tt.Interior.Color = CLR_HDR_BG; tt.HorizontalAlignment = K_CENTER;
+    ws.Rows.Item(1).RowHeight = 24;
+    setV(ws, 2, 1, "Số SA/PO: " + pos.length + "   |   Số liệu = SUMIFS từ sheet " + DATA_N + " / " + DATA_M + " (mỗi file = 1 ngày)");
+    ws.Cells.Item(2, 1).Font.Italic = true;
+    addLink(ws, ws.Cells.Item(2, NC), CTRL, "← Về " + CTRL);
+    if (nWarn) {
+        addLink(ws, ws.Cells.Item(3, 5), WARN_NAME, "⚠ " + nWarn + " dòng dữ liệu lỗi → xem");
+        colorCell(ws.Cells.Item(3, 5), false);
+    }
+    if (colNote) {   // cột tool đã dùng (trước đây hiện trong thông báo)
+        setV(ws, 4, 1, colNote);
+        ws.Cells.Item(4, 1).Font.Italic = true; ws.Cells.Item(4, 1).Font.Size = 9; ws.Cells.Item(4, 1).Font.Color = rgb(128, 128, 128);
+    }
+
+    var rHdr = 5, r1 = 6, rN = r1 + pos.length - 1;
+    writeRow(ws, rHdr, ["SA/PO", "Dòng xe", "NCC đã giao", "GR (MB51)", "Gap (NCC - GR)", "Trạng thái",
+        "Số mã cầu", "Xe giao (NCC)", "Xe đã GR", "Bộ cầu", "Sheet chi tiết"]);
+    fmtHeader(ws, rHdr, NC);
+
+    var col = [], boCol = [], cnt = { ok: 0, bad: 0, warn: 0 }, st, cars = [], car, b, xeNCC = 0;
+    for (i = 0; i < pos.length; i++) {
+        car = carOf ? (carOf[pos[i]] || NO_CAR) : "";
+        col.push([toCell(pos[i]), car]);
+        if (carOf && cars.indexOf(car) < 0) cars.push(car);
+        st = poStatus(inN[pos[i]], inM[pos[i]], (sumN[pos[i]] || 0) - (sumM[pos[i]] || 0));
+        cnt[st[1]]++;
+        b = boOf[pos[i]];
+        if (codesPerCar > 0) {
+            boCol.push([b.nCodes + "/" + codesPerCar, b.carsN, b.carsM, b.ok ? "✔ Đủ bộ" : "⚠ " + b.issues.join("; ")]);
+            xeNCC += b.carsN || 0;
+        } else boCol.push([b.nCodes, "", "", "—"]);
+    }
+    writeBlock(ws, r1, col, 2);
+    try { ws.Range(ws.Cells.Item(r1, 7), ws.Cells.Item(rN, 7)).NumberFormat = "@"; } catch (eN) {}   // "4/4" không bị hiểu là ngày
+    ws.Range(ws.Cells.Item(r1, 7), ws.Cells.Item(rN, 10)).Value2 = boCol;
+    setSummaryFormulas(ws, r1, rN);
+
+    // Link sang sheet chi tiết của PO
+    for (i = 0; i < pos.length; i++)
+        if (sheetOf[pos[i]]) addLink(ws, ws.Cells.Item(r1 + i, NC), sheetOf[pos[i]], "→ Xem chi tiết " + pos[i]);
+    if (codesPerCar > 0) {
+        ws.Cells.Item(rN + 1, 8).Formula = "=SUM(H" + r1 + ":H" + rN + ")";
+        ws.Cells.Item(rN + 1, 9).Formula = "=SUM(I" + r1 + ":I" + rN + ")";
+    }
+    var tr = ws.Range(ws.Cells.Item(rN + 1, 1), ws.Cells.Item(rN + 1, NC));
+    tr.Font.Bold = true; tr.Interior.Color = CLR_LBLUE;
+    colorCell(ws.Cells.Item(3, 1), true); colorCell(ws.Cells.Item(3, 2), false);
+    ws.Cells.Item(3, 3).Interior.Color = CLR_WARN_BG; ws.Cells.Item(3, 3).Font.Color = CLR_WARN_FT; ws.Cells.Item(3, 3).Font.Bold = true;
+
+    // Màu A..F theo ký tự đầu của Trạng thái (✔ xanh / ✘ đỏ / ⚠ vàng) - tự đổi khi số liệu đổi
+    var body = ws.Range(ws.Cells.Item(r1, 1), ws.Cells.Item(rN, NC - 1));
+    body.Borders.LineStyle = K_LINE; body.Borders.Color = rgb(200, 200, 200);
+    var main6 = ws.Range(ws.Cells.Item(r1, 1), ws.Cells.Item(rN, 6)), cfOk = false;
+    try {
+        ws.Activate(); ws.Cells.Item(r1, 1).Select();   // công thức điều kiện tính tương đối theo ô đang chọn
+        main6.FormatConditions.Delete();
+        var cf = [["✔", CLR_GREEN_BG, CLR_GREEN_FT], ["✘", CLR_RED_BG, CLR_RED_FT], ["⚠", CLR_WARN_BG, CLR_WARN_FT]], x, fc;
+        for (x = 0; x < cf.length; x++) {
+            fc = main6.FormatConditions.Add(2, undefined, "=LEFT($F" + r1 + ",1)=\"" + cf[x][0] + "\"");
+            fc.Interior.Color = cf[x][1]; fc.Font.Color = cf[x][2];
+        }
+        cfOk = true;
+    } catch (eCF) {
+        for (i = 0; i < pos.length; i++)
+            colorRowKind(ws, r1 + i, 6, poStatus(inN[pos[i]], inM[pos[i]], (sumN[pos[i]] || 0) - (sumM[pos[i]] || 0))[1]);
+    }
+    // Màu G..J theo kết quả bộ cầu
+    if (codesPerCar > 0) {
+        for (i = 0; i < pos.length; i++) {
+            var rgB = ws.Range(ws.Cells.Item(r1 + i, 7), ws.Cells.Item(r1 + i, 10)), okB = boOf[pos[i]].ok;
+            rgB.Interior.Color = okB ? CLR_GREEN_BG : CLR_WARN_BG; rgB.Font.Color = okB ? CLR_GREEN_FT : CLR_WARN_FT;
+        }
+    }
+    try { ws.Range(ws.Cells.Item(r1, 7), ws.Cells.Item(rN, 9)).HorizontalAlignment = K_CENTER; } catch (eC) {}
+
+    try { ws.Range(ws.Cells.Item(rHdr, 1), ws.Cells.Item(rN, NC)).AutoFilter(); } catch (eA) {}   // lọc theo Dòng xe / Trạng thái / Bộ cầu
+    if (carOf) writeCarTable(ws, cars, r1, rN, cfOk);
+    autoFit(ws, NC);
+    setColW(ws, 1, 16); setColW(ws, 2, 12); setColW(ws, 3, 15); setColW(ws, 4, 15); setColW(ws, 5, 17);
+    setColW(ws, 7, 13); setColW(ws, 8, 15); setColW(ws, 9, 13);
+    ws.Cells.Item(1, 1).Select();
+    return { ws: ws, khop: cnt.ok, lech: cnt.bad, motBen: cnt.warn, xeNCC: xeNCC };
+}
+
+// Bảng tổng theo dòng xe (cột M..T) - toàn công thức trên bảng PO bên trái
+function writeCarTable(ws, cars, r1, rN, useCF) {
+    var C0 = SUM_NC + 2, NCt = 8, i, r, c;
+    cars.sort(function (a, b) { return carRank(a) - carRank(b) || cmpVal(a, b); });
+    setV(ws, 4, C0, "TỔNG THEO DÒNG XE");
+    var t = mergeRange(ws, 4, C0, 4, C0 + NCt - 1);
+    t.Font.Bold = true; t.Font.Color = CLR_WHITE; t.Interior.Color = CLR_HDR_BG; t.HorizontalAlignment = K_CENTER;
+    var hdr = ["Dòng xe", "Số PO", "Xe giao", "NCC đã giao", "GR (MB51)", "Gap", "✔ Khớp", "Có vấn đề"];
+    for (i = 0; i < hdr.length; i++) setV(ws, 5, C0 + i, hdr[i]);
+    var h = ws.Range(ws.Cells.Item(5, C0), ws.Cells.Item(5, C0 + NCt - 1));
+    h.Font.Bold = true; h.Font.Color = CLR_WHITE; h.Interior.Color = CLR_HDR2_BG; h.HorizontalAlignment = K_CENTER;
+    h.Borders.LineStyle = K_LINE; h.Borders.Color = CLR_WHITE;
+
+    var L = function (k) { return colLetter(C0 + k); };   // 0 Dòng xe, 1 Số PO, 2 Xe, 3 NCC, 4 GR, 5 Gap, 6 Khớp, 7 Có vấn đề
+    var B = "$B$" + r1 + ":$B$" + rN, Cc = "$C$" + r1 + ":$C$" + rN, D = "$D$" + r1 + ":$D$" + rN,
+        F = "$F$" + r1 + ":$F$" + rN, H = "$H$" + r1 + ":$H$" + rN;
+    for (i = 0; i < cars.length; i++) {
+        r = 6 + i; var key = "$" + L(0) + r;
+        setV(ws, r, C0, cars[i]);
+        ws.Cells.Item(r, C0 + 1).Formula = "=COUNTIF(" + B + "," + key + ")";
+        ws.Cells.Item(r, C0 + 2).Formula = "=SUMIFS(" + H + "," + B + "," + key + ")";
+        ws.Cells.Item(r, C0 + 3).Formula = "=SUMIFS(" + Cc + "," + B + "," + key + ")";
+        ws.Cells.Item(r, C0 + 4).Formula = "=SUMIFS(" + D + "," + B + "," + key + ")";
+        ws.Cells.Item(r, C0 + 5).Formula = "=" + L(3) + r + "-" + L(4) + r;
+        ws.Cells.Item(r, C0 + 6).Formula = "=COUNTIFS(" + B + "," + key + "," + F + ",\"✔*\")";
+        ws.Cells.Item(r, C0 + 7).Formula = "=" + L(1) + r + "-" + L(6) + r;
+    }
+    var rT = 6 + cars.length;
+    setV(ws, rT, C0, "TỔNG");
+    for (c = 1; c < NCt; c++)
+        ws.Cells.Item(rT, C0 + c).Formula = (c === 5) ? "=" + L(3) + rT + "-" + L(4) + rT : "=SUM(" + L(c) + "6:" + L(c) + (rT - 1) + ")";
+    var tr = ws.Range(ws.Cells.Item(rT, C0), ws.Cells.Item(rT, C0 + NCt - 1));
+    tr.Font.Bold = true; tr.Interior.Color = CLR_LBLUE;
+    for (c = 0; c < NCt; c++) setColW(ws, C0 + c, c === 0 ? 12 : 13);
+    setColW(ws, C0 - 1, 3);
+    if (!cars.length) return;
+    var body = ws.Range(ws.Cells.Item(6, C0), ws.Cells.Item(rT - 1, C0 + NCt - 1));
+    body.Borders.LineStyle = K_LINE; body.Borders.Color = rgb(200, 200, 200);
+    try {
+        if (!useCF) throw new Error("no CF");
+        ws.Cells.Item(6, C0).Select();
+        body.FormatConditions.Delete();
+        var g = body.FormatConditions.Add(2, undefined, "=$" + L(7) + "6=0"); g.Interior.Color = CLR_GREEN_BG; g.Font.Color = CLR_GREEN_FT;
+        var b = body.FormatConditions.Add(2, undefined, "=$" + L(7) + "6>0"); b.Interior.Color = CLR_RED_BG; b.Font.Color = CLR_RED_FT;
+    } catch (e) {}
+}
+
+// Công thức Tổng hợp (dùng lại khi xuất file) - dòng r1..rN là các PO, rN+1 là dòng TỔNG
+function setSummaryFormulas(ws, r1, rN) {
+    var rg = function (c) { return ws.Range(ws.Cells.Item(r1, c), ws.Cells.Item(rN, c)); };
+    var a = "$A" + r1, e = "E" + r1;
+    rg(3).Formula = "=SUMIFS(" + DATA_N + "!$D:$D," + DATA_N + "!$B:$B," + a + ")";
+    rg(4).Formula = "=SUMIFS(" + DATA_M + "!$D:$D," + DATA_M + "!$B:$B," + a + ")";
+    rg(5).Formula = "=C" + r1 + "-D" + r1;
+    rg(6).Formula = "=IF(COUNTIF(" + DATA_M + "!$B:$B," + a + ")=0,\"⚠ Chưa GR (chỉ có NCC)\"," +
+        "IF(COUNTIF(" + DATA_N + "!$B:$B," + a + ")=0,\"⚠ Chỉ có GR (NCC không có)\"," +
+        "IF(ROUND(" + e + ",6)=0,\"✔ Khớp\",IF(" + e + ">0,\"✘ NCC thừa / GR thiếu\",\"✘ GR thừa / NCC thiếu\"))))";
+    var rT = rN + 1;
+    setV(ws, rT, 1, "TỔNG");
+    ws.Cells.Item(rT, 3).Formula = "=SUM(C" + r1 + ":C" + rN + ")";
+    ws.Cells.Item(rT, 4).Formula = "=SUM(D" + r1 + ":D" + rN + ")";
+    ws.Cells.Item(rT, 5).Formula = "=C" + rT + "-D" + rT;
+    var f = "F" + r1 + ":F" + rN;
+    ws.Cells.Item(3, 1).Formula = "=\"✔ Khớp: \"&COUNTIF(" + f + ",\"✔*\")";
+    ws.Cells.Item(3, 2).Formula = "=\"✘ Lệch: \"&COUNTIF(" + f + ",\"✘*\")";
+    ws.Cells.Item(3, 3).Formula = "=\"⚠ Một bên: \"&COUNTIF(" + f + ",\"⚠*\")";
+}
+
+// ========================= SHEET CẢNH BÁO DỮ LIỆU =========================
+function writeWarnings(wb, after, warns) {
+    var ws = wb.Worksheets.Add(null, after);
+    ws.Name = safeSheetName(wb, WARN_NAME);
+    setV(ws, 1, 1, "CẢNH BÁO DỮ LIỆU — " + warns.length + " dòng có vấn đề (kiểm tra lại file gốc)");
+    var tt = mergeRange(ws, 1, 1, 1, 7);
+    tt.Font.Bold = true; tt.Font.Size = 13; tt.Font.Color = CLR_WHITE;
+    tt.Interior.Color = rgb(156, 87, 0); tt.HorizontalAlignment = K_CENTER;
+    addLink(ws, ws.Cells.Item(2, 1), SUM_NAME, "← Về " + SUM_NAME);
+    try { ws.Range("C:F").NumberFormat = "@"; } catch (e) {}
+    var data = [["File", "Dòng trong file gốc", "Material", "PO/SA", "Số BB", "Số lượng (gốc)", "Vấn đề"]], i;
+    for (i = 0; i < warns.length; i++) data.push([warns[i][0], warns[i][1], warns[i][2], warns[i][3], warns[i][4], String(warns[i][5]), warns[i][6]]);
+    writeBlock(ws, 4, data, 7);
+    fmtHeader(ws, 4, 7);
+    var body = ws.Range(ws.Cells.Item(5, 1), ws.Cells.Item(4 + warns.length, 7));
+    body.Interior.Color = CLR_WARN_BG; body.Font.Color = CLR_WARN_FT;
+    body.Borders.LineStyle = K_LINE; body.Borders.Color = rgb(200, 200, 200);
+    try { ws.Range(ws.Cells.Item(4, 1), ws.Cells.Item(4 + warns.length, 7)).AutoFilter(); } catch (eA) {}
+    autoFit(ws, 7); setColW(ws, 1, 10);
+}
+
+// ========================= XUẤT KẾT QUẢ RA FILE =========================
+function exportResult(path) {
+    initK();
+    var wb = thisWB(), names = [], i, nm, sh, nb = null;
+    for (i = 1; i <= wb.Worksheets.Count; i++) { nm = wb.Worksheets.Item(i).Name; if (isToolSheet(wb.Worksheets.Item(i))) names.push(nm); }
+    if (names.length === 0) throw new Error("Chưa có kết quả để lưu.");
+    try {
+        for (i = 0; i < names.length; i++) {
+            sh = wb.Worksheets.Item(names[i]);
+            if (!nb) { sh.Copy(); nb = Application.ActiveWorkbook; }
+            else sh.Copy(null, nb.Worksheets.Item(nb.Worksheets.Count));
+        }
+        // Công thức copy sang bị trỏ về file tool -> ghi lại để trỏ vào sheet dữ liệu trong file mới
+        var s = getSheet(nb, SUM_NAME);
+        if (s) {
+            var r = 6; while (trimStr(s.Cells.Item(r, 1).Value2) !== "TỔNG" && r < 1048570) r++;
+            if (r > 6) setSummaryFormulas(s, 6, r - 1);
+            try { s.Cells.Item(2, SUM_NC).Clear(); } catch (e) {}   // bỏ link "Về Control" (file mới không có Control)
+            s.Activate(); s.Cells.Item(1, 1).Select();
+        }
+        try { nb.Worksheets.Item(1).Activate(); } catch (e2) {}
+        nb.SaveAs(path, 51);
+    } finally { if (nb) { try { nb.Close(false); } catch (e3) {} } }
+}
+
+function addLink(ws, cell, sheetName, text) {
+    try { ws.Hyperlinks.Add(cell, "", "'" + sheetName + "'!A1", "", text); }
+    catch (e) { cell.Value2 = text; }
+}
+
+// ========================= HÀM PHỤ TRỢ =========================
+function thisWB() {
+    var wb = null;
+    try { wb = Application.ThisWorkbook; } catch (e) {}
+    if (!wb) { try { wb = ThisWorkbook; } catch (e2) {} }
+    if (!wb) wb = Application.ActiveWorkbook;
+    return wb;
+}
+
+function getSheet(wb, name) {
+    var i, c = wb.Worksheets.Count;
+    for (i = 1; i <= c; i++) if (wb.Worksheets.Item(i).Name === name) return wb.Worksheets.Item(i);
+    return null;
+}
+
+// Sheet do tool tạo: tên cố định, hoặc sheet chi tiết (A1 bắt đầu bằng DETAIL_TAG)
+function isToolSheet(sh) {
+    var nm = sh.Name;
+    if (nm === SUM_NAME || nm === WARN_NAME || nm === DATA_N || nm === DATA_M) return true;
+    var a1 = "";
+    try { a1 = String(sh.Cells.Item(1, 1).Value2 || ""); } catch (e) {}
+    return a1.indexOf(DETAIL_TAG) === 0;
+}
+
+// Chỉ xóa sheet do tool tạo - sheet riêng của người dùng giữ nguyên
+function clearResultSheets(wb) {
+    var names = [], i, sh;
+    for (i = 1; i <= wb.Worksheets.Count; i++) { sh = wb.Worksheets.Item(i); if (sh.Name !== CTRL && isToolSheet(sh)) names.push(sh.Name); }
+    for (i = 0; i < names.length; i++) { try { wb.Worksheets.Item(names[i]).Delete(); } catch (e) {} }
+}
+
+function colIndex(v) {
+    var s = trimStr(v);
+    if (s === "" || s === "-") return 0;
+    if (/^[0-9]+$/.test(s)) return parseInt(s, 10);
+    s = s.toUpperCase();
+    if (!/^[A-Z]{1,3}$/.test(s)) return 0;
+    var n = 0, i;
+    for (i = 0; i < s.length; i++) n = n * 26 + (s.charCodeAt(i) - 64);
+    return n;
+}
+
+function colLetter(n) {
+    var s = "";
+    while (n > 0) { var m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
+    return s;
+}
+
+function cleanKey(v) {
+    if (v === null || v === undefined) return "";
+    if (typeof v === "number") return String(v);
+    return trimStr(v);
+}
+function toNum(v) { var n = Number(v); return isNaN(n) ? 0 : n; }
+function round6(x) { return Math.round(x * 1000000) / 1000000; }
+function trimStr(s) { return String(s === null || s === undefined ? "" : s).replace(/^\s+|\s+$/g, ""); }
+
+function safeSheetName(wb, s) {
+    var x = String(s).replace(/[\\\/\?\*\[\]:]/g, "_");
+    if (x.length > 31) x = x.substring(0, 31);
+    if (x === "") x = "Sheet";
+    var base = x, i = 1;
+    while (getSheet(wb, x)) { x = base.substring(0, 28) + "_" + i; i++; }
+    return x;
+}
+
+function pickFile(title) {
+    var f = "";
+    try {
+        var g = Application.GetOpenFilename("Excel (*.xls;*.xlsx;*.xlsm;*.csv),*.xls;*.xlsx;*.xlsm;*.csv", 1, title);
+        if (g !== false && g !== null && g !== undefined && String(g) !== "False") f = String(g);
+        return f;
+    } catch (e) {}
+    try {   // dự phòng: hộp thoại FileDialog (3 = chọn file)
+        var fd = Application.FileDialog(3);
+        fd.Title = title; fd.AllowMultiSelect = false;
+        if (fd.Show() === -1) f = String(fd.SelectedItems.Item(1));
+    } catch (e2) {}
+    return f;
+}
+
+function getV(ws, r, c) { return ws.Cells.Item(r, c).Value2; }
+function setV(ws, r, c, v) { ws.Cells.Item(r, c).Value2 = v; }
+function writeRow(ws, r, arr) { var i; for (i = 0; i < arr.length; i++) setV(ws, r, i + 1, arr[i]); }
+
+function mergeRange(ws, r1, c1, r2, c2) {
+    var rng = ws.Range(ws.Cells.Item(r1, c1), ws.Cells.Item(r2, c2));
+    try { rng.Merge(); } catch (e) {}
+    return rng;
+}
+
+function fmtHeader(ws, r, nCol) {
+    var rng = ws.Range(ws.Cells.Item(r, 1), ws.Cells.Item(r, nCol));
+    rng.Font.Bold = true; rng.Font.Color = CLR_WHITE; rng.Interior.Color = CLR_HDR2_BG;
+    rng.HorizontalAlignment = K_CENTER;
+    rng.Borders.LineStyle = K_LINE; rng.Borders.Color = CLR_WHITE;
+}
+
+function colorCell(cell, ok) {
+    cell.Interior.Color = ok ? CLR_GREEN_BG : CLR_RED_BG;
+    cell.Font.Color = ok ? CLR_GREEN_FT : CLR_RED_FT;
+    cell.Font.Bold = true;
+}
+
+// kind: "ok" xanh / "bad" đỏ / "warn" vàng
+function colorRowKind(ws, r, nCol, kind) {
+    var rng = ws.Range(ws.Cells.Item(r, 1), ws.Cells.Item(r, nCol));
+    rng.Interior.Color = kind === "ok" ? CLR_GREEN_BG : (kind === "warn" ? CLR_WARN_BG : CLR_RED_BG);
+    rng.Font.Color = kind === "ok" ? CLR_GREEN_FT : (kind === "warn" ? CLR_WARN_FT : CLR_RED_FT);
+    rng.Borders.LineStyle = K_LINE; rng.Borders.Color = rgb(200, 200, 200);
+}
+
+function setColW(ws, c, w) { try { ws.Cells.Item(1, c).EntireColumn.ColumnWidth = w; } catch (e) {} }
+function autoFit(ws, nCol) { var c; for (c = 1; c <= nCol; c++) { try { ws.Cells.Item(1, c).EntireColumn.AutoFit(); } catch (e) {} } }
+
+function p2(x) { return (x < 10 ? "0" : "") + x; }
+function nowStr() {
+    var d = new Date();
+    return p2(d.getDate()) + "/" + p2(d.getMonth() + 1) + "/" + d.getFullYear() + " " + p2(d.getHours()) + ":" + p2(d.getMinutes());
+}
+function dateStamp() {
+    var d = new Date();
+    return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()) + "_" + p2(d.getHours()) + p2(d.getMinutes());
+}
+
+function msg(s) { try { alert(s); return; } catch (e) {} try { Application.Alert(s); } catch (e2) {} }

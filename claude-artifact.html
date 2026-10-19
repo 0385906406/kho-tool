@@ -1,0 +1,241 @@
+<title>Kho Tool Đối Soát</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Be+Vietnam+Pro:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Bố cục: phiếu nhận hàng — dải tiêu đề mực xanh, mỗi tool là 1 "phiếu" 2 cột (thông tin | ô tải), bên dưới là các ô trống chờ tool mới */
+:root {
+  --paper: #f3f5f2;
+  --sheet: #ffffff;
+  --ink: #14233d;
+  --ink-soft: #4b5a72;
+  --rule: #d5dbe2;
+  --band: #14233d;
+  --band-fg: #eef2f7;
+  --go: #0b7a48;
+  --go-fg: #ffffff;
+  --go-soft: #dff1e7;
+  --warn: #9a5a00;
+  --warn-soft: #fbecc8;
+  --bad: #a3122a;
+  --bad-soft: #fbdde2;
+  --code-bg: #eaeef3;
+  --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "Be Vietnam Pro", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", "Consolas", "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f1622; --sheet: #172131; --ink: #e6ebf2; --ink-soft: #9aa8bc; --rule: #2a374b;
+    --band: #0a1220; --band-fg: #e6ebf2; --go: #2fb87a; --go-fg: #06140d; --go-soft: #133426;
+    --warn: #f0b24a; --warn-soft: #3a2c10; --bad: #ff7d8f; --bad-soft: #3d1820; --code-bg: #212d40;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f1622; --sheet: #172131; --ink: #e6ebf2; --ink-soft: #9aa8bc; --rule: #2a374b;
+  --band: #0a1220; --band-fg: #e6ebf2; --go: #2fb87a; --go-fg: #06140d; --go-soft: #133426;
+  --warn: #f0b24a; --warn-soft: #3a2c10; --bad: #ff7d8f; --bad-soft: #3d1820; --code-bg: #212d40;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* Dải tiêu đề */
+.band { background: var(--band); color: var(--band-fg); }
+.band .wrap { padding-block: 28px 24px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.band h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(30px, 5vw, 44px); letter-spacing: .01em; line-height: 1; margin: 0; text-wrap: balance; }
+.band p { margin: 8px 0 0; color: color-mix(in srgb, var(--band-fg) 72%, transparent); max-width: 60ch; }
+.band .meta { font-family: var(--f-mono); font-size: 12px; display: flex; gap: 18px; flex-wrap: wrap; color: color-mix(in srgb, var(--band-fg) 70%, transparent); }
+.band .meta b { color: var(--band-fg); font-weight: 600; }
+
+main .wrap { padding-block: 28px 56px; display: grid; gap: 28px; }
+.label { font-family: var(--f-display); font-weight: 600; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
+
+/* Phiếu tool */
+.tool { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
+.tool-info { padding: 26px 28px; display: grid; gap: 18px; min-width: 0; }
+.tool-head { display: grid; gap: 6px; }
+.tool-head h2 { font-family: var(--f-display); font-weight: 700; font-size: 30px; line-height: 1.05; margin: 0; text-wrap: balance; }
+.tool-head .sub { display: flex; flex-wrap: wrap; gap: 8px 14px; font-family: var(--f-mono); font-size: 12px; color: var(--ink-soft); }
+.tool-head .sub span { white-space: nowrap; }
+.tool-info > p { margin: 0; max-width: 65ch; }
+.features { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 22px; }
+.features li { padding-left: 18px; position: relative; font-size: 14px; }
+.features li::before { content: ""; position: absolute; left: 0; top: .62em; width: 8px; height: 8px; border-radius: 2px; background: var(--go); }
+
+/* Ô tải về */
+.dl { border-left: 1px solid var(--rule); padding: 26px 24px; display: flex; flex-direction: column; gap: 12px; background: color-mix(in srgb, var(--paper) 55%, var(--sheet)); border-radius: 0 6px 6px 0; }
+.btn { appearance: none; border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 5px; padding: 10px 12px; font: 500 14px/1.3 var(--f-body); text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; }
+.btn:hover:not(:disabled) { border-color: var(--ink-soft); }
+.btn:focus-visible { outline: 3px solid color-mix(in srgb, var(--go) 55%, transparent); outline-offset: 2px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn .sz { font-family: var(--f-mono); font-size: 11px; color: var(--ink-soft); white-space: nowrap; }
+.btn.primary { background: var(--go); border-color: var(--go); color: var(--go-fg); padding: 14px 16px; font-family: var(--f-display); font-weight: 700; font-size: 20px; letter-spacing: .03em; text-transform: uppercase; }
+.btn.primary .sz { color: color-mix(in srgb, var(--go-fg) 80%, transparent); }
+.dl .small { font-size: 12px; color: var(--ink-soft); margin: 0; }
+.status { font-size: 13px; min-height: 1.4em; margin: 0; }
+.status.ok { color: var(--go); } .status.err { color: var(--bad); } .status.info { color: var(--ink-soft); }
+
+/* Chi tiết dưới phiếu */
+.detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); gap: 28px; }
+.panel { display: grid; gap: 12px; align-content: start; min-width: 0; }
+ol.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 10px; }
+ol.steps li { counter-increment: s; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; align-items: baseline; }
+ol.steps li::before { content: counter(s); font-family: var(--f-display); font-weight: 700; font-size: 18px; color: var(--go); border: 1.5px solid var(--go); border-radius: 50%; width: 28px; height: 28px; display: grid; place-items: center; line-height: 1; }
+.req { font-size: 13px; color: var(--ink-soft); margin: 4px 0 0; }
+
+.table-scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--sheet); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th { font-family: var(--f-display); font-weight: 600; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; text-align: left; color: var(--ink-soft); padding: 9px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+td { padding: 8px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.num { text-align: right; }
+td.code { font-family: var(--f-mono); font-size: 12px; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+.pill.ok { background: var(--go-soft); color: var(--go); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.note { font-size: 12px; color: var(--ink-soft); margin: 0; }
+ul.changes { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+
+/* Ô chờ tool mới */
+.slot { border: 1.5px dashed var(--rule); border-radius: 6px; padding: 20px 24px; display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: baseline; justify-content: space-between; color: var(--ink-soft); }
+.slot strong { font-family: var(--f-display); font-size: 20px; color: var(--ink); font-weight: 600; }
+.slot p { margin: 0; max-width: 62ch; font-size: 14px; }
+
+@media (max-width: 820px) {
+  .tool { grid-template-columns: minmax(0, 1fr); }
+  .dl { border-left: 0; border-top: 1px solid var(--rule); border-radius: 0 0 6px 6px; }
+  .detail { grid-template-columns: minmax(0, 1fr); }
+  .features { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: no-preference) { .btn { transition: border-color .15s, filter .15s; } .btn.primary:hover:not(:disabled) { filter: brightness(1.08); } }
+</style>
+
+<header class="band">
+  <div class="wrap">
+    <div>
+      <h1>Kho Tool Đối Soát</h1>
+      <p>Tool chạy trên WPS Spreadsheets cho khâu giao nhận phụ tùng: đối chiếu NCC đã giao với GR trên SAP MB51.</p>
+    </div>
+    <div class="meta" id="meta"></div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap" id="list"></div>
+</main>
+
+<script src="tools.js"></script>
+<script>
+(function () {
+  var TOOLS = window.TOOLS || [];
+  var downloads = null;
+  var listEl = document.getElementById("list");
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function kb(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB"; }
+  function pill(v) { var p = String(v).split("|"); return '<span class="pill ' + esc(p[0]) + '">' + esc(p[1]) + "</span>"; }
+
+  document.getElementById("meta").innerHTML =
+    "<span><b>" + TOOLS.length + "</b> tool</span><span>WPS Office · macro JS</span><span>Cập nhật <b>" + esc(TOOLS[0] ? TOOLS[0].version : "") + "</b></span>";
+
+  function render() {
+    var html = "";
+    TOOLS.forEach(function (t) {
+      var main = t.files[0], extra = t.files.slice(1);
+      html += '<div class="label">Tool</div>' +
+        '<article class="tool" id="' + esc(t.id) + '">' +
+          '<div class="tool-info">' +
+            '<div class="tool-head"><h2>' + esc(t.name) + '</h2>' +
+              '<div class="sub"><span>' + esc(t.code) + '.xlsm</span><span>Phiên bản ' + esc(t.version) + '</span><span>' + esc(t.platform) + '</span></div></div>' +
+            '<p>' + esc(t.summary) + '</p>' +
+            '<ul class="features">' + t.features.map(function (f) { return "<li>" + esc(f) + "</li>"; }).join("") + '</ul>' +
+          '</div>' +
+          '<div class="dl">' +
+            '<button class="btn primary" type="button" id="dl-' + esc(t.id) + '-0" data-tool="' + esc(t.id) + '" data-i="0"><span>Tải tool về</span><span class="sz">.zip · ' + kb(main.size) + '</span></button>' +
+            '<p class="small">Gồm ' + esc(t.code) + '.xlsm, 2 file mẫu, mã nguồn và hướng dẫn.</p>' +
+            '<p class="status info" id="st-' + esc(t.id) + '" role="status" aria-live="polite">Đang kiểm tra quyền tải…</p>' +
+            '<div class="label" style="margin-top:6px">Tải lẻ từng file</div>' +
+            extra.map(function (f, k) {
+              return '<button class="btn" type="button" id="dl-' + esc(t.id) + '-' + (k + 1) + '" data-tool="' + esc(t.id) + '" data-i="' + (k + 1) + '"><span>' + esc(f.label) + '</span><span class="sz">.' + esc(f.kind) + ' · ' + kb(f.size) + '</span></button>';
+            }).join("") +
+          '</div>' +
+        '</article>' +
+        '<section class="detail">' +
+          '<div class="panel"><div class="label">Cách dùng</div>' +
+            '<ol class="steps">' + t.steps.map(function (s) { return "<li><span>" + esc(s) + "</span></li>"; }).join("") + '</ol>' +
+            '<p class="req">Cần WPS Office có macro JS. Không mở bằng Microsoft Excel vì Excel không chạy được macro của WPS.</p>' +
+            '<div class="label" style="margin-top:10px">Có gì mới</div>' +
+            '<ul class="changes">' + t.changes.map(function (c) { return "<li>" + esc(c) + "</li>"; }).join("") + '</ul>' +
+          '</div>' +
+          '<div class="panel"><div class="label">Kết quả trông như thế này</div>' +
+            '<div class="table-scroll"><table><thead><tr>' + t.sample.head.map(function (h) { return "<th>" + esc(h) + "</th>"; }).join("") + '</tr></thead><tbody>' +
+              t.sample.rows.map(function (r) {
+                return "<tr><td class=\"code\">" + esc(r[0]) + "</td><td>" + esc(r[1]) + "</td><td class=\"num\">" + r[2] + "</td><td class=\"num\">" + r[3] + "</td><td class=\"num\">" + r[4] + "</td><td>" + pill(r[5]) + "</td><td>" + pill(r[6]) + "</td></tr>";
+              }).join("") +
+            '</tbody></table></div>' +
+            '<p class="note">' + esc(t.sample.note) + '. Sheet Tổng hợp thật có thêm cột số mã cầu, số xe giao, số xe đã GR và link sang sheet chi tiết.</p>' +
+          '</div>' +
+        '</section>';
+    });
+    html += '<div class="slot"><strong>Chỗ cho tool tiếp theo</strong><p>Kho này đọc danh sách từ một file dữ liệu, nên tool mới sẽ hiện thêm một phiếu như trên kèm nút tải riêng.</p></div>';
+    listEl.innerHTML = html;
+  }
+
+  function setStatus(id, cls, text) { var el = document.getElementById("st-" + id); if (el) { el.className = "status " + cls; el.textContent = text; } }
+  function setButtons(on) { Array.prototype.forEach.call(document.querySelectorAll(".dl .btn"), function (b) { b.disabled = !on; }); }
+
+  function toBlob(b64) {
+    var bin = atob(b64), n = bin.length, u = new Uint8Array(n);
+    for (var i = 0; i < n; i++) u[i] = bin.charCodeAt(i);
+    return new Blob([u]);
+  }
+
+  var MSG = {
+    declined: "Đã hủy tải.",
+    rate_limited: "Đang có một hộp xác nhận mở. Chờ chút rồi bấm lại.",
+    rejected_extension: "Định dạng file này không được phép tải ở đây.",
+    extension_not_enabled: "Định dạng file này đang bị tắt ở chế độ xem hiện tại.",
+    too_large: "File quá lớn để tải ở đây."
+  };
+
+  listEl.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-tool]");
+    if (!b || b.disabled) return;
+    var t = TOOLS.filter(function (x) { return x.id === b.getAttribute("data-tool"); })[0];
+    var f = t && t.files[+b.getAttribute("data-i")];
+    if (!f) return;
+    if (!downloads) { setStatus(t.id, "err", "Không tải được ở chế độ xem này. Mở trang trong claude.ai để tải."); return; }
+    setStatus(t.id, "info", "Đang mở hộp xác nhận cho " + f.name + "…");
+    var data;
+    try { data = toBlob(f.b64); } catch (ex) { setStatus(t.id, "err", "Lỗi đọc dữ liệu file (mã lỗi: decode)."); return; }
+    downloads.save({ filename: f.name, data: data }).then(function (res) {
+      setStatus(t.id, "ok", "Đã tải " + f.name + ".");
+    }, function (err) {
+      var code = (err && err.code) || "unknown";
+      setStatus(t.id, code === "declined" ? "info" : "err", (MSG[code] || "Không tải được.") + " (mã lỗi: " + code + ")");
+    });
+  });
+
+  render();
+  setButtons(false);
+
+  if (window.claude && typeof window.claude.use === "function") {
+    window.claude.use("downloads").then(function (d) {
+      downloads = d;
+      setButtons(!!d);
+      TOOLS.forEach(function (t) {
+        setStatus(t.id, d ? "info" : "err", d ? "Bấm nút, xác nhận tên file là tải xong." : "Chế độ xem này không cho tải (mã lỗi: no-capability). Mở link trang trong claude.ai, không mở bằng tab riêng.");
+      });
+    }, function () {
+      TOOLS.forEach(function (t) { setStatus(t.id, "err", "Chế độ xem này không cho tải (mã lỗi: use-failed). Mở link trang trong claude.ai."); });
+    });
+  } else {
+    TOOLS.forEach(function (t) { setStatus(t.id, "err", "Chế độ xem này không cho tải (mã lỗi: no-claude). Trang đang mở ngoài claude.ai."); });
+  }
+})();
+</script>

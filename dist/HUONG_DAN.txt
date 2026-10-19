@@ -1,0 +1,33 @@
+﻿TOOL ĐỐI SOÁT NCC <-> MB51 (GR) — HƯỚNG DẪN NHANH
+==================================================
+
+Trong gói này
+  ToolDoiSoat.xlsm    File tool (có sẵn code + giao diện). Mở bằng WPS Office.
+  NCC_mau.xlsx        File mẫu phía nhà cung cấp (số liệu mẫu để chạy thử).
+  MB51_mau.xlsx       File mẫu xuất MB51 từ SAP (số liệu mẫu để chạy thử).
+  DoiSoat_WPS_JS.txt  Mã nguồn JavaScript của tool (dùng khi cần dán lại code).
+
+Yêu cầu
+  - WPS Office (Spreadsheets) bản có hỗ trợ macro JS.
+  - Khi mở file, nếu WPS hỏi có bật macro không -> chọn BẬT.
+  - Không mở bằng Microsoft Excel (Excel không chạy được macro JS của WPS).
+
+Cách dùng
+  1. Giải nén toàn bộ gói ra một thư mục.
+  2. Mở ToolDoiSoat.xlsm bằng WPS, bật macro.
+  3. Sheet Control: bấm "Chọn file NCC" và "Chọn file MB51"
+     (chạy thử thì chọn 2 file mẫu NCC_mau.xlsx và MB51_mau.xlsx).
+  4. Bấm "CHECK CHÊNH LỆCH".
+  5. Xem sheet "Tổng hợp" (mỗi SA/PO 1 dòng) và các sheet chi tiết phía sau.
+  6. Bấm "Lưu kết quả (.xlsx)" để lưu lại kết quả của ngày.
+
+Thông số trên sheet Control (ô vàng)
+  - Cột: để "Tự động" -> tool tự nhận cột theo dòng tiêu đề.
+  - Số tờ chuẩn / 1 lần GR: chỉ để cảnh báo khi 1 lần GR gộp khác số tờ.
+  - Số mã cầu / 1 xe (mặc định 4) và Số xe / 1 chuyến (mặc định 4):
+    1 chuyến (1 BB) = 4 xe x 4 mã = 16 cái. Đặt 0 để tắt kiểm tra bộ cầu.
+
+Lưu ý
+  - Mỗi lần CHECK, tool chỉ xóa các sheet do nó tạo ra; sheet riêng của bạn được giữ nguyên.
+  - Muốn sửa tự do sheet Control: Review -> Unprotect Sheet (không có mật khẩu).
+  - Số liệu trong 2 file mẫu là dữ liệu giả lập để chạy thử, không phải PO thật.

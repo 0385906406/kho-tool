@@ -1,0 +1,4 @@
+# Sinh ra khi build — GitHub Actions tự tạo lại
+public/
+tools.js
+node_modules/
