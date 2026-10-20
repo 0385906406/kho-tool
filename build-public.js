@@ -9,7 +9,8 @@ const TOOLS = require('./tools.config.js').map(t => Object.assign({}, t, {
     const dir = path.join(filesDir, t.id);
     fs.mkdirSync(dir, { recursive: true });
     fs.copyFileSync(path.join(here, f.src), path.join(dir, f.name));
-    return { label: f.label, name: f.name, kind: f.kind, size: fs.statSync(path.join(here, f.src)).size, url: 'files/' + t.id + '/' + encodeURIComponent(f.name) };
+    return { label: f.label, name: f.name, kind: f.kind, size: fs.statSync(path.join(here, f.src)).size, url: 'files/' + t.id + '/' + encodeURIComponent(f.name),
+      primary: !!f.primary, edition: f.edition || '', note: f.note || '' };
   }),
 }));
 fs.writeFileSync(path.join(out, 'tools.js'), '// Sinh tự động bởi build-public.js — không sửa tay\nwindow.TOOLS = ' + JSON.stringify(TOOLS) + ';\n');

@@ -1,6 +1,9 @@
 # Kho Tool Đối Soát
 
-Trang tải các tool WPS Spreadsheets cho khâu giao nhận phụ tùng. Hiện có **Tool Đối Soát NCC ↔ MB51**.
+Trang tải các tool cho khâu giao nhận phụ tùng. Hiện có **Tool Đối Soát NCC ↔ MB51**, gồm 2 bản:
+
+- **Microsoft Excel** (macro VBA): `dist/ToolDoiSoat_Excel.xlsm`, mã nguồn `dist/DoiSoat_Excel.bas`
+- **WPS Office** (macro JS): `dist/ToolDoiSoat.xlsm`, mã nguồn `dist/DoiSoat_WPS_JS.txt`
 
 Mỗi lần push lên nhánh `main`, GitHub Actions chạy `node build-public.js` và đăng thư mục `public/` lên GitHub Pages.
 

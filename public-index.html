@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Kho Tool Đối Soát</title>
-<meta name="description" content="Tải các tool WPS cho đối soát giao nhận phụ tùng: Tool Đối Soát NCC ↔ MB51 kèm file mẫu và hướng dẫn.">
+<meta name="description" content="Tải tool đối soát giao nhận phụ tùng NCC ↔ MB51 cho Microsoft Excel và WPS Office, kèm file mẫu và hướng dẫn.">
 <meta name="theme-color" content="#f2f4f6">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -132,7 +132,20 @@ main .wrap { padding-block: 24px 64px; display: grid; gap: 20px; }
 .row:active { background: var(--fill); }
 .ext { flex: none; width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; }
 .ext.xlsm, .ext.xlsx { background: var(--mint-soft); color: var(--mint); }
-.ext.txt { background: var(--fill); color: var(--sub); }
+.ext.txt, .ext.bas { background: var(--fill); color: var(--sub); }
+/* Nút chọn bản (Excel / WPS) */
+.edition { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: var(--r-md); background: var(--card); text-decoration: none; box-shadow: var(--shadow); border: 2px solid transparent; transition: transform .12s ease, border-color .15s; -webkit-tap-highlight-color: transparent; }
+.edition:hover { border-color: color-mix(in srgb, var(--blue) 40%, transparent); }
+.edition:active { transform: scale(.98); }
+.edition.main { background: var(--blue); color: var(--on-blue); box-shadow: 0 8px 20px color-mix(in srgb, var(--blue) 28%, transparent); }
+.ed-icon { flex: none; width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; font-size: 12px; font-weight: 800; background: var(--mint-soft); color: var(--mint); }
+.edition.main .ed-icon { background: color-mix(in srgb, var(--on-blue) 22%, transparent); color: var(--on-blue); }
+.ed-t { flex: 1; min-width: 0; }
+.ed-t b { display: block; font-size: 16px; font-weight: 700; }
+.ed-t span { display: block; font-size: 12px; opacity: .75; }
+.ed-go { flex: none; display: grid; justify-items: center; gap: 2px; }
+.ed-go svg { width: 20px; height: 20px; }
+.ed-go small { font-size: 11px; opacity: .8; white-space: nowrap; }
 .ext.zip { background: var(--blue-soft); color: var(--blue); }
 .row .t { flex: 1; min-width: 0; }
 .row .t b { display: block; font-size: 15px; font-weight: 600; }
@@ -211,7 +224,7 @@ footer .credit .kr { font-size: 11px; color: var(--blue); background: var(--blue
     <div>
       <span class="eyebrow">Đối soát giao nhận phụ tùng <span class="kr">· 대사 도구</span></span>
       <h1>NCC giao bao nhiêu, GR được bao nhiêu, <em>một nút là biết.</em></h1>
-      <p class="lead">Tool chạy trên WPS Spreadsheets: đối chiếu số lượng nhà cung cấp đã giao với GR trên SAP MB51 theo từng SA/PO, kiểm tra đủ bộ cầu cho từng xe.</p>
+      <p class="lead">Tool chạy trên Microsoft Excel hoặc WPS: đối chiếu số lượng nhà cung cấp đã giao với GR trên SAP MB51 theo từng SA/PO, kiểm tra đủ bộ cầu cho từng xe.</p>
       <div class="hero-actions" id="heroActions"></div>
       <div class="hero-meta" id="heroMeta"></div>
     </div>
@@ -248,19 +261,21 @@ footer .credit .kr { font-size: 11px; color: var(--blue); background: var(--blue
   function chip(v) { var p = String(v).split("|"); return '<span class="chip ' + esc(p[0]) + '">' + esc(p[1]) + "</span>"; }
   function dlAttr(f) { return 'href="' + esc(f.url) + '" download="' + esc(f.name) + '" data-name="' + esc(f.name) + '"'; }
 
+  function primaries(t) { var p = t.files.filter(function (f) { return f.primary; }); return p.length ? p : [t.files[0]]; }
+
   var first = TOOLS[0];
   if (first) {
-    var m = first.files[0];
-    document.getElementById("heroActions").innerHTML =
-      '<a class="btn btn-primary" ' + dlAttr(m) + '>' + ICON_DL + 'Tải tool về <small>' + kb(m.size) + '</small></a>' +
-      '<a class="btn btn-ghost" href="#' + esc(first.id) + '">Xem chi tiết</a>';
+    var ps = primaries(first);
+    document.getElementById("heroActions").innerHTML = ps.map(function (f, i) {
+      return '<a class="btn ' + (i === 0 ? 'btn-primary' : 'btn-ghost') + '" ' + dlAttr(f) + '>' + ICON_DL + 'Tải bản ' + esc(f.edition || f.label) + ' <small>' + kb(f.size) + '</small></a>';
+    }).join("");
     document.getElementById("heroMeta").innerHTML =
-      "<span>Phiên bản <b>" + esc(first.version) + "</b></span><span>Chạy trên <b>WPS Office</b></span><span><b>Miễn phí</b>, không cần đăng nhập</span>";
+      "<span>Phiên bản <b>" + esc(first.version) + "</b></span><span>Chạy trên <b>Microsoft Excel</b> hoặc <b>WPS Office</b></span><span><b>Miễn phí</b>, không cần đăng nhập</span>";
   }
 
   var html = '<div class="section-title"><h2>Tool có sẵn</h2><span class="kr">도구 목록</span></div>';
   TOOLS.forEach(function (t) {
-    var main = t.files[0], extra = t.files.slice(1);
+    var mains = primaries(t), extra = t.files.filter(function (f) { return mains.indexOf(f) < 0; });
     html +=
       '<article class="card tool" id="' + esc(t.id) + '">' +
         '<div class="tool-info">' +
@@ -272,8 +287,14 @@ footer .credit .kr { font-size: 11px; color: var(--blue); background: var(--blue
           '<ul class="features">' + t.features.map(function (f) { return "<li>" + esc(f) + "</li>"; }).join("") + '</ul>' +
         '</div>' +
         '<div class="dl">' +
-          '<a class="btn btn-primary" ' + dlAttr(main) + '>' + ICON_DL + 'Tải bộ đầy đủ <small>.zip · ' + kb(main.size) + '</small></a>' +
-          '<p class="hint">Gồm tool, 2 file mẫu, mã nguồn và hướng dẫn</p>' +
+          '<div class="dl-label">Chọn bản theo máy của bạn</div>' +
+          mains.map(function (f, i) {
+            return '<a class="edition' + (i === 0 ? ' main' : '') + '" ' + dlAttr(f) + '>' +
+              '<span class="ed-icon">' + esc((f.edition || 'ZIP').slice(0, 5)) + '</span>' +
+              '<span class="ed-t"><b>' + esc(f.label) + '</b><span>' + esc(f.note || '') + '</span></span>' +
+              '<span class="ed-go">' + ICON_DL + '<small>' + kb(f.size) + '</small></span></a>';
+          }).join("") +
+          '<p class="hint">Mỗi gói gồm file tool, 2 file mẫu, mã nguồn và hướng dẫn</p>' +
           '<div class="dl-label">Tải lẻ từng file</div>' +
           '<div class="list">' + extra.map(function (f) {
             return '<a class="row" ' + dlAttr(f) + '><span class="ext ' + esc(f.kind) + '">' + esc(f.kind) + '</span>' +
@@ -292,7 +313,7 @@ footer .credit .kr { font-size: 11px; color: var(--blue); background: var(--blue
         '</tbody></table></div><p class="note">' + esc(t.sample.note) + '. Sheet Tổng hợp thật còn có số mã cầu, số xe giao, số xe đã GR và link sang sheet chi tiết.</p></div>' +
         '<div class="card pad news-card"><h4>Có gì mới <span class="tag blue">v' + esc(t.version) + '</span></h4>' +
           '<ul class="new">' + t.changes.map(function (c) { return "<li>" + esc(c) + "</li>"; }).join("") + '</ul>' +
-          '<div class="req">Cần WPS Office có macro JS và bật macro khi mở file. Microsoft Excel không chạy được macro của WPS.</div>' +
+          '<div class="req"><b>Bản Excel</b>: Excel 2016 / 2019 / 365 trên máy tính, bấm Enable Content khi mở (file tải từ mạng bị chặn thì chuột phải → Properties → Unblock).<br><b>Bản WPS</b>: WPS Office có macro JS. Hai bản không dùng lẫn cho nhau.</div>' +
         '</div>' +
       '</div>';
   });

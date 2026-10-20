@@ -3,7 +3,7 @@
 const fs = require('fs'), path = require('path');
 const here = __dirname;
 const TOOLS = require('./tools.config.js').map(t => Object.assign({}, t, {
-  files: t.files.filter(f => !f.xlsmOnly).map(f => ({
+  files: t.files.filter(f => !f.webOnly && !f.xlsmOnly).map(f => ({
     label: f.label, name: f.name, kind: f.kind,
     size: fs.statSync(path.join(here, f.src)).size,
     b64: fs.readFileSync(path.join(here, f.src)).toString('base64'),
