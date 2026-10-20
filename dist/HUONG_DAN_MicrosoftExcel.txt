@@ -1,12 +1,13 @@
-﻿TOOL ĐỐI SOÁT NCC <-> MB51 (GR) — BẢN MICROSOFT EXCEL — HƯỚNG DẪN NHANH
+﻿TOOL ĐỐI SOÁT NCC <-> MB51 (GR) — BẢN DÙNG CHO MICROSOFT EXCEL — HƯỚNG DẪN NHANH
+(Máy dùng WPS Office thì tải bản "DungCho_WPSOffice".)
 =======================================================================
 Phát triển bởi Nguyễn Viết Dương
 
 Trong gói này
-  ToolDoiSoat_Excel.xlsm  File tool (macro VBA). Mở bằng Microsoft Excel.
+  ToolDoiSoat_MicrosoftExcel.xlsm  File tool (macro VBA). Mở bằng Microsoft Excel.
   NCC_mau.xlsx            File mẫu phía nhà cung cấp (số liệu giả lập để chạy thử).
   MB51_mau.xlsx           File mẫu xuất MB51 từ SAP (số liệu giả lập để chạy thử).
-  DoiSoat_Excel.bas       Mã nguồn VBA (Alt+F11 -> File -> Import File... nếu cần nạp lại).
+  MaNguon_MicrosoftExcel_VBA.bas   Mã nguồn VBA (Alt+F11 -> File -> Import File... nếu cần nạp lại).
 
 Yêu cầu
   - Microsoft Excel 2016 / 2019 / 2021 / Microsoft 365 trên máy tính Windows.
@@ -15,7 +16,7 @@ Yêu cầu
 Lần đầu mở file
   1. Giải nén toàn bộ gói ra một thư mục.
   2. Nếu Excel hiện dải ĐỎ "Microsoft đã chặn macro..." (file tải từ mạng):
-       đóng Excel -> chuột phải ToolDoiSoat_Excel.xlsm -> Properties
+       đóng Excel -> chuột phải ToolDoiSoat_MicrosoftExcel.xlsm -> Properties
        -> tick "Unblock" (Bỏ chặn) -> OK -> mở lại file.
   3. Nếu hiện dải VÀNG "Security Warning ... Enable Content" -> bấm "Enable Content".
   (Máy công ty có chính sách chặn macro thì nhờ IT cho phép file này.)

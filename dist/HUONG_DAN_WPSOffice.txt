@@ -1,11 +1,12 @@
-﻿TOOL ĐỐI SOÁT NCC <-> MB51 (GR) — HƯỚNG DẪN NHANH
+﻿TOOL ĐỐI SOÁT NCC <-> MB51 (GR) — BẢN DÙNG CHO WPS OFFICE — HƯỚNG DẪN NHANH
+(Máy dùng Microsoft Excel thì tải bản "DungCho_MicrosoftExcel".)
 ==================================================
 
 Trong gói này
-  ToolDoiSoat.xlsm    File tool (có sẵn code + giao diện). Mở bằng WPS Office.
+  ToolDoiSoat_WPSOffice.xlsm   File tool (có sẵn code + giao diện). Mở bằng WPS Office.
   NCC_mau.xlsx        File mẫu phía nhà cung cấp (số liệu mẫu để chạy thử).
   MB51_mau.xlsx       File mẫu xuất MB51 từ SAP (số liệu mẫu để chạy thử).
-  DoiSoat_WPS_JS.txt  Mã nguồn JavaScript của tool (dùng khi cần dán lại code).
+  MaNguon_WPSOffice_JS.txt     Mã nguồn JavaScript của tool (dùng khi cần dán lại code).
 
 Yêu cầu
   - WPS Office (Spreadsheets) bản có hỗ trợ macro JS.
@@ -14,7 +15,7 @@ Yêu cầu
 
 Cách dùng
   1. Giải nén toàn bộ gói ra một thư mục.
-  2. Mở ToolDoiSoat.xlsm bằng WPS, bật macro.
+  2. Mở ToolDoiSoat_WPSOffice.xlsm bằng WPS, bật macro.
   3. Sheet Control: bấm "Chọn file NCC" và "Chọn file MB51"
      (chạy thử thì chọn 2 file mẫu NCC_mau.xlsx và MB51_mau.xlsx).
   4. Bấm "CHECK CHÊNH LỆCH".

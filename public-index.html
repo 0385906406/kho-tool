@@ -267,7 +267,7 @@ footer .credit .kr { font-size: 11px; color: var(--blue); background: var(--blue
   if (first) {
     var ps = primaries(first);
     document.getElementById("heroActions").innerHTML = ps.map(function (f, i) {
-      return '<a class="btn ' + (i === 0 ? 'btn-primary' : 'btn-ghost') + '" ' + dlAttr(f) + '>' + ICON_DL + 'Tải bản ' + esc(f.edition || f.label) + ' <small>' + kb(f.size) + '</small></a>';
+      return '<a class="btn ' + (i === 0 ? 'btn-primary' : 'btn-ghost') + '" ' + dlAttr(f) + '>' + ICON_DL + 'Tải cho máy dùng ' + esc(f.edition || f.label) + ' <small>' + kb(f.size) + '</small></a>';
     }).join("");
     document.getElementById("heroMeta").innerHTML =
       "<span>Phiên bản <b>" + esc(first.version) + "</b></span><span>Chạy trên <b>Microsoft Excel</b> hoặc <b>WPS Office</b></span><span><b>Miễn phí</b>, không cần đăng nhập</span>";
@@ -281,20 +281,20 @@ footer .credit .kr { font-size: 11px; color: var(--blue); background: var(--blue
         '<div class="tool-info">' +
           '<div class="tool-head"><div class="app-icon">XLSM</div><div>' +
             '<h3>' + esc(t.name) + '</h3>' +
-            '<div class="tags"><span class="tag blue">v' + esc(t.version) + '</span><span class="tag">' + esc(t.platform) + '</span><span class="tag">' + esc(t.code) + '.xlsm</span></div>' +
+            '<div class="tags"><span class="tag blue">v' + esc(t.version) + '</span><span class="tag">' + esc(t.platform) + '</span><span class="tag">' + esc(t.code) + '_MicrosoftExcel.xlsm</span><span class="tag">' + esc(t.code) + '_WPSOffice.xlsm</span></div>' +
           '</div></div>' +
           '<p>' + esc(t.summary) + '</p>' +
           '<ul class="features">' + t.features.map(function (f) { return "<li>" + esc(f) + "</li>"; }).join("") + '</ul>' +
         '</div>' +
         '<div class="dl">' +
-          '<div class="dl-label">Chọn bản theo máy của bạn</div>' +
+          '<div class="dl-label">Máy bạn dùng phần mềm nào? Chọn đúng bản:</div>' +
           mains.map(function (f, i) {
             return '<a class="edition' + (i === 0 ? ' main' : '') + '" ' + dlAttr(f) + '>' +
               '<span class="ed-icon">' + esc((f.edition || 'ZIP').slice(0, 5)) + '</span>' +
               '<span class="ed-t"><b>' + esc(f.label) + '</b><span>' + esc(f.note || '') + '</span></span>' +
               '<span class="ed-go">' + ICON_DL + '<small>' + kb(f.size) + '</small></span></a>';
           }).join("") +
-          '<p class="hint">Mỗi gói gồm file tool, 2 file mẫu, mã nguồn và hướng dẫn</p>' +
+          '<p class="hint">Không chắc? Mở 1 file Excel bất kỳ: thanh tiêu đề ghi <b>Excel</b> (logo X xanh lá) → bản Microsoft Excel; ghi <b>WPS</b> → bản WPS Office. Mỗi gói gồm file tool, 2 file mẫu, mã nguồn và hướng dẫn.</p>' +
           '<div class="dl-label">Tải lẻ từng file</div>' +
           '<div class="list">' + extra.map(function (f) {
             return '<a class="row" ' + dlAttr(f) + '><span class="ext ' + esc(f.kind) + '">' + esc(f.kind) + '</span>' +

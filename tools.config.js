@@ -19,7 +19,7 @@ module.exports = [
       'Tự nhận cột theo tiêu đề; 30.000 dòng: WPS ~5 giây, Excel ~30 giây',
     ],
     steps: [
-      'Chọn bản theo máy: Excel (Microsoft Office) hoặc WPS. Giải nén gói .zip ra một thư mục.',
+      'Tải đúng bản: máy dùng Microsoft Excel → bản "Dùng cho Microsoft Excel"; máy dùng WPS → bản "Dùng cho WPS Office". Giải nén gói .zip.',
       'Mở file .xlsm, bấm Enable Content / Bật macro khi được hỏi.',
       'Trên sheet Control, bấm Chọn file NCC và Chọn file MB51.',
       'Bấm CHECK CHÊNH LỆCH và xem sheet Tổng hợp.',
@@ -39,16 +39,16 @@ module.exports = [
     // primary = nút tải lớn (mỗi bản 1 nút, có ghi chú); còn lại = tải lẻ
     // webOnly = chỉ có ở bản web độc lập (claude.ai không cho tải .xlsm / .bas)
     files: [
-      { label: 'Bản Microsoft Excel', name: 'ToolDoiSoat_Excel_2026-10-20.zip', src: 'ToolDoiSoat_Excel_2026-10-20.zip', kind: 'zip',
-        primary: true, edition: 'Excel', note: 'Excel 2016 / 2019 / 365 trên máy tính · macro VBA' },
-      { label: 'Bản WPS Office', name: 'ToolDoiSoat_WPS_2026-10-20.zip', src: 'ToolDoiSoat_WPS_2026-10-20.zip', kind: 'zip',
-        primary: true, edition: 'WPS', note: 'WPS Spreadsheets · macro JS' },
-      { label: 'Chỉ file tool Excel', name: 'ToolDoiSoat_Excel.xlsm', src: 'dist/ToolDoiSoat_Excel.xlsm', kind: 'xlsm', webOnly: true },
-      { label: 'Chỉ file tool WPS', name: 'ToolDoiSoat.xlsm', src: 'dist/ToolDoiSoat.xlsm', kind: 'xlsm', webOnly: true },
-      { label: 'File mẫu NCC', name: 'NCC_mau.xlsx', src: 'dist/NCC_mau.xlsx', kind: 'xlsx' },
-      { label: 'File mẫu MB51', name: 'MB51_mau.xlsx', src: 'dist/MB51_mau.xlsx', kind: 'xlsx' },
-      { label: 'Mã nguồn VBA (Excel)', name: 'DoiSoat_Excel.bas', src: 'dist/DoiSoat_Excel.bas', kind: 'bas', webOnly: true },
-      { label: 'Mã nguồn JS (WPS)', name: 'DoiSoat_WPS_JS.txt', src: 'dist/DoiSoat_WPS_JS.txt', kind: 'txt' },
+      { label: 'Dùng cho Microsoft Excel', name: 'ToolDoiSoat_DungCho_MicrosoftExcel_2026-10-20.zip', src: 'ToolDoiSoat_DungCho_MicrosoftExcel_2026-10-20.zip', kind: 'zip',
+        primary: true, edition: 'Excel', note: 'Máy có Microsoft Office / Excel 2016–365 (macro VBA)' },
+      { label: 'Dùng cho WPS Office', name: 'ToolDoiSoat_DungCho_WPSOffice_2026-10-20.zip', src: 'ToolDoiSoat_DungCho_WPSOffice_2026-10-20.zip', kind: 'zip',
+        primary: true, edition: 'WPS', note: 'Máy dùng WPS Office / WPS Spreadsheets (macro JS)' },
+      { label: 'File tool — Microsoft Excel', name: 'ToolDoiSoat_MicrosoftExcel.xlsm', src: 'dist/ToolDoiSoat_MicrosoftExcel.xlsm', kind: 'xlsm', webOnly: true },
+      { label: 'File tool — WPS Office', name: 'ToolDoiSoat_WPSOffice.xlsm', src: 'dist/ToolDoiSoat_WPSOffice.xlsm', kind: 'xlsm', webOnly: true },
+      { label: 'File mẫu NCC (dùng chung)', name: 'NCC_mau.xlsx', src: 'dist/NCC_mau.xlsx', kind: 'xlsx' },
+      { label: 'File mẫu MB51 (dùng chung)', name: 'MB51_mau.xlsx', src: 'dist/MB51_mau.xlsx', kind: 'xlsx' },
+      { label: 'Mã nguồn — Microsoft Excel (VBA)', name: 'MaNguon_MicrosoftExcel_VBA.bas', src: 'dist/MaNguon_MicrosoftExcel_VBA.bas', kind: 'bas', webOnly: true },
+      { label: 'Mã nguồn — WPS Office (JS)', name: 'MaNguon_WPSOffice_JS.txt', src: 'dist/MaNguon_WPSOffice_JS.txt', kind: 'txt' },
     ],
     changes: [
       'Thêm bản Microsoft Excel (VBA): giao diện, nút bấm và kết quả giống bản WPS',

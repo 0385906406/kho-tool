@@ -2,8 +2,8 @@
 
 Trang tải các tool cho khâu giao nhận phụ tùng. Hiện có **Tool Đối Soát NCC ↔ MB51**, gồm 2 bản:
 
-- **Microsoft Excel** (macro VBA): `dist/ToolDoiSoat_Excel.xlsm`, mã nguồn `dist/DoiSoat_Excel.bas`
-- **WPS Office** (macro JS): `dist/ToolDoiSoat.xlsm`, mã nguồn `dist/DoiSoat_WPS_JS.txt`
+- **Dùng cho Microsoft Excel** (macro VBA): gói `ToolDoiSoat_DungCho_MicrosoftExcel_*.zip` — file `dist/ToolDoiSoat_MicrosoftExcel.xlsm`, mã nguồn `dist/MaNguon_MicrosoftExcel_VBA.bas`
+- **Dùng cho WPS Office** (macro JS): gói `ToolDoiSoat_DungCho_WPSOffice_*.zip` — file `dist/ToolDoiSoat_WPSOffice.xlsm`, mã nguồn `dist/MaNguon_WPSOffice_JS.txt`
 
 Mỗi lần push lên nhánh `main`, GitHub Actions chạy `node build-public.js` và đăng thư mục `public/` lên GitHub Pages.
 
