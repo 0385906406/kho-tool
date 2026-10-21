@@ -9,12 +9,17 @@ Attribute VB_Name = "DoiSoat"
 '   Luu ket qua        -> LuuKetQua
 ' Dung lai giao dien: Alt+F8 -> CaiDatGiaoDien -> Run
 '
-' File nguon nay viet tieng Viet UTF-8; script build doi chuoi co dau thanh U("\uXXXX")
-' truoc khi nap vao Excel (VBA chi doc file .bas theo bang ma ANSI).
+' Chuoi co dau viet dang U("\uXXXX") vi VBA chi doc file .bas theo bang ma ANSI.
+'
+' Chay duoc ca Excel Windows va Excel Mac:
+'   - Windows: Dictionary = Scripting.Dictionary (CreateObject, khong can tham chieu thu vien)
+'   - Mac    : Dictionary = lop Dict (module lop Dict trong file nay)
+' MB51 tu SAP: neu file co cot Movement type thi chi lay cac MvT trong o "Loc Movement type".
 '==========================================================================
 Option Explicit
 
-#If VBA7 Then
+#If Mac Then
+#ElseIf VBA7 Then
 Private Declare PtrSafe Function MessageBoxW Lib "user32" (ByVal hWnd As LongPtr, ByVal lpText As LongPtr, ByVal lpCaption As LongPtr, ByVal uType As Long) As Long
 #Else
 Private Declare Function MessageBoxW Lib "user32" (ByVal hWnd As Long, ByVal lpText As Long, ByVal lpCaption As Long, ByVal uType As Long) As Long
@@ -25,7 +30,8 @@ Private Const TRACE_ON As Boolean = False   ' ban test bat True: ghi vet tung bu
 
 Private Const R_PATH As Long = 4, R_SHEET As Long = 5, R_START As Long = 6, R_MAT As Long = 7, R_PO As Long = 8
 Private Const R_BB As Long = 9, R_SEQ As Long = 10, R_QTY As Long = 11, R_CAR As Long = 12, R_BATCH As Long = 13
-Private Const R_CODES As Long = 14, R_TRIP As Long = 15, R_NOTE As Long = 17
+Private Const R_CODES As Long = 14, R_TRIP As Long = 15, R_MVT As Long = 16, R_NOTE As Long = 17
+Private Const DEF_MVT As String = "101,102,122,123,161,162"
 Private Const C_NCC As Long = 2, C_MB As Long = 3, MAX_DETAIL As Long = 30, SUM_NC As Long = 11
 Private Const PASS As String = ""
 ' vi tri truong trong 1 dong du lieu
@@ -58,10 +64,13 @@ Private Sub InitK()
                      Split(U("item|date|ng\u00e0y|ngay|type"), "|"))
     KW("bb") = Array(U("S\u1ed1 BB"), Split(U("s\u1ed1 bb|so bb|bb|bi\u00ean b\u1ea3n|bien ban|s\u1ed1 bi\u00ean b\u1ea3n|so bien ban|reference|ref|ref.|delivery note"), "|"), _
                      Split(U("date|ng\u00e0y|ngay"), "|"))
-    KW("qty") = Array(U("S\u1ed1 l\u01b0\u1ee3ng"), Split(U("s\u1ed1 l\u01b0\u1ee3ng|so luong|sl|quantity|qty|qty in une|quantity in une|qty in un. of entry"), "|"), _
+    KW("qty") = Array(U("S\u1ed1 l\u01b0\u1ee3ng"), Split(U("s\u1ed1 l\u01b0\u1ee3ng|so luong|sl|quantity|qty|qty in une|quantity in une|qty in un. of entry|qty in unit of entry|quantity in unit of entry|menge|erfmg"), "|"), _
                       Split(U("unit|\u0111\u01a1n v\u1ecb|don vi|uom|price|amount|gi\u00e1"), "|"))
     KW("car") = Array(U("D\u00f2ng xe"), Split(U("d\u00f2ng xe|dong xe|lo\u1ea1i xe|loai xe|model|car model|vehicle|xe|d\u1ef1 \u00e1n|du an|project"), "|"), _
                       Split(U("date|ng\u00e0y|ngay"), "|"))
+    ' Cot Movement type (chi doc o file MB51, khong bat buoc)
+    KW("mvt") = Array("Movement type", Split(U("movement type|mvt|mvmt type|mvt type|bwart|lo\u1ea1i chuy\u1ec3n \u0111\u1ed9ng|loai chuyen dong|m\u00e3 chuy\u1ec3n \u0111\u1ed9ng|ma chuyen dong"), "|"), _
+                      Split(U("text|desc|t\u00ean|m\u00f4 t\u1ea3|mo ta"), "|"))
     CLR_GREEN_BG = RGB(198, 239, 206): CLR_GREEN_FT = RGB(0, 97, 0)
     CLR_RED_BG = RGB(255, 199, 206): CLR_RED_FT = RGB(156, 0, 6)
     CLR_WARN_BG = RGB(255, 235, 156): CLR_WARN_FT = RGB(156, 87, 0)
@@ -123,12 +132,15 @@ Done:
     Application.EnableEvents = True
 End Sub
 
+' Luu y: KHONG viet "InitK: ChonFile ..." tren 1 dong - VBA hieu "InitK:" la NHAN (label), InitK se khong chay
 Public Sub ChonFileNCC()
-    InitK: ChonFile C_NCC, "Chon file NCC"
+    InitK
+    ChonFile C_NCC, "Chon file NCC"
 End Sub
 
 Public Sub ChonFileMB51()
-    InitK: ChonFile C_MB, "Chon file MB51"
+    InitK
+    ChonFile C_MB, "Chon file MB51"
 End Sub
 
 Private Sub ChonFile(ByVal c As Long, ByVal title As String)
@@ -145,7 +157,11 @@ Public Sub LuuKetQua()
     If GetSheet(ThisWorkbook, SUM_NAME) Is Nothing Then Msg U("Ch\u01b0a c\u00f3 k\u1ebft qu\u1ea3. H\u00e3y b\u1ea5m CHECK CH\u00caNH L\u1ec6CH tr\u01b0\u1edbc."): Exit Sub
     def = ThisWorkbook.path & Application.PathSeparator & "DoiSoat_" & Format(Now, "yyyy-mm-dd_hhnn") & ".xlsx"
     If gSilent Then Exit Sub
+#If Mac Then
+    f = Application.GetSaveAsFilename(InitialFileName:="DoiSoat_" & Format(Now, "yyyy-mm-dd_hhnn") & ".xlsx")
+#Else
     f = Application.GetSaveAsFilename(InitialFileName:=def, FileFilter:="Excel (*.xlsx),*.xlsx", Title:="Luu ket qua doi soat")
+#End If
     If VarType(f) = vbBoolean Then Exit Sub
     path = CStr(f)
     On Error GoTo EH
@@ -192,6 +208,24 @@ Public Sub ChayThu(ByVal nccPath As String, ByVal mbPath As String, ByVal savePa
     End If
     Application.DisplayAlerts = False
     ThisWorkbook.SaveCopyAs savePath
+End Sub
+
+' Chay thu khong tham so (dung tren Mac/AppleScript): lay 2 duong dan o B4/C4, khong mo hop thoai,
+' xuat ket qua ra file KetQua_ChayThu.xlsx canh file tool. Thong bao ghi vao o Z1 sheet Control.
+Public Sub ChayThuNgam()
+    Dim c As Worksheet, ex As String
+    gSilent = True
+    InitK
+    Set c = EnsureControl(ThisWorkbook)
+    c.Range("Z1").Value2 = ""
+    ProtectSheet c
+    CheckChenhLech
+    ex = ThisWorkbook.path & Application.PathSeparator & "KetQua_ChayThu.xlsx"
+    On Error Resume Next
+    ExportResult ex
+    If Err.Number <> 0 Then Msg "EXPORT ERR: " & Err.Description
+    On Error GoTo 0
+    gSilent = False
 End Sub
 
 '========================= DOI SOAT =========================
@@ -312,9 +346,13 @@ Private Sub RunCheck()
     Msg s
 End Sub
 
-' Can tham chieu "Microsoft Scripting Runtime" (script build tu them) - New nhanh hon CreateObject rat nhieu
+' Windows: Scripting.Dictionary (tao muon, khong can tham chieu thu vien); Mac: lop Dict tu viet
 Private Function NewDict() As Object
-    Set NewDict = New Scripting.Dictionary
+#If Mac Then
+    Set NewDict = New Dict
+#Else
+    Set NewDict = CreateObject("Scripting.Dictionary")
+#End If
 End Function
 
 Private Function DGet(d As Object, k As Variant) As Double
@@ -328,7 +366,7 @@ End Function
 
 Private Sub AddRows(byPO As Object, rows As Variant, ByVal n As Long, ByVal isN As Boolean)
     Dim i As Long, r As Variant, o As Object, po As String, lastPo As String, mat As String
-    Dim dMats As Scripting.Dictionary, dQty As Scripting.Dictionary, dIn As Scripting.Dictionary, cRows As Collection
+    Dim dMats As Object, dQty As Object, dIn As Object, cRows As Collection
     lastPo = vbNullChar
     For i = 0 To n - 1
         r = rows(i): po = r(F_PO): mat = r(F_MAT)
@@ -358,12 +396,11 @@ End Sub
 
 ' Kiem tra bo cau 1 PO: 1 xe = cpc ma (moi ma 1 cai); 1 chuyen (1 BB) = cpt xe
 Private Function CheckBo(o As Object, ByVal cpc As Long, ByVal cpt As Long) As Object
-    ' Bien khai bao dung kieu Scripting.Dictionary / Collection (goi truc tiep, nhanh hon nhieu so voi As Object)
-    Dim res As Scripting.Dictionary, dN As Scripting.Dictionary, dM As Scripting.Dictionary
-    Dim inN As Scripting.Dictionary, inM As Scripting.Dictionary, trips As Collection
+    Dim res As Object, dN As Object, dM As Object
+    Dim inN As Object, inM As Object, trips As Collection
     Dim mats As Variant, i As Long, mat As Variant, q As Double, nTripBad As Long
     Dim nN As Long, nM As Long, minN As Double, maxN As Double, minM As Double, issues As String
-    Set res = New Scripting.Dictionary
+    Set res = NewDict()
     Set dN = o("n"): Set dM = o("m"): Set inN = o("inN"): Set inM = o("inM")
     Set trips = New Collection
     res("ok") = True: res("nCodes") = 0: res("carsN") = "": res("carsM") = "": res("issues") = ""
@@ -394,17 +431,17 @@ Private Function CheckBo(o As Object, ByVal cpc As Long, ByVal cpt As Long) As O
     End If
 
     ' Tung chuyen (BB) cua NCC: du ma? cac ma bang nhau? tong = cpc x cpt?
-    Dim byBB As Scripting.Dictionary, tTot As Scripting.Dictionary, tq As Scripting.Dictionary, t As Scripting.Dictionary
+    Dim byBB As Object, tTot As Object, tq As Object, t As Object
     Dim rowsN As Collection, r As Variant, bb As Variant, bbs As Variant, k As Variant, tot As Double
     Dim cnt As Long, mn As Double, mx As Double, notes As String, need As Double
-    Set byBB = New Scripting.Dictionary: Set tTot = New Scripting.Dictionary: need = cpc * cpt
+    Set byBB = NewDict(): Set tTot = NewDict(): need = cpc * cpt
     Set rowsN = o("rowsN")
     For Each r In rowsN
         bb = r(F_BB)
         If byBB.Exists(bb) Then
             Set tq = byBB(bb)
         Else
-            Set tq = New Scripting.Dictionary: byBB.Add bb, tq: tTot.Add bb, 0
+            Set tq = NewDict(): byBB.Add bb, tq: tTot.Add bb, 0
         End If
         If tq.Exists(r(F_MAT)) Then tq(r(F_MAT)) = tq(r(F_MAT)) + r(F_QTY) Else tq.Add r(F_MAT), r(F_QTY)
         tTot(bb) = tTot(bb) + r(F_QTY)
@@ -425,7 +462,7 @@ Private Function CheckBo(o As Object, ByVal cpc As Long, ByVal cpt As Long) As O
             End If
             If cpt > 0 And Round6(tot - need) <> 0 Then notes = JoinNote(notes, U("t\u1ed5ng ") & tot & "/" & need & U(" c\u00e1i"))
             If notes <> "" Then nTripBad = nTripBad + 1
-            Set t = New Scripting.Dictionary
+            Set t = NewDict()
             t("bb") = bbs(i): t.Add "qty", tq: t("total") = tot: t("note") = notes
             trips.Add t
         Next
@@ -512,32 +549,87 @@ Private Function ReadSource(ws As Worksheet, ByVal c As Long, ByVal path As Stri
             If cols(key) <= lastCol Then If TrimS(hdr(cols(key))) <> "" Then info = info & " (""" & TrimS(hdr(cols(key))) & """)"
         End If
     Next
-    colInfo = info: hasCar = (cols("car") > 0)
+    hasCar = (cols("car") > 0)
+
+    ' Movement type (chi file MB51): co cot MvT thi chi lay cac MvT trong o loc (VD 101,102,122,123,161,162)
+    Dim mvtCol As Long, mvtSet As Object, mvtList As String, mv As String, nSkipMvt As Long, skipList As Object
+    If c = C_MB Then
+        mvtList = MvtFilterText(ws.Cells(R_MVT, C_MB).Value2)
+        If mvtList <> "" Then
+            mvtCol = DetectCol(hdr, KW("mvt"), used)
+            If mvtCol > 0 Then
+                Set mvtSet = NewDict(): Set skipList = NewDict()
+                For Each key In Split(mvtList, ",")
+                    If Trim$(key) <> "" Then mvtSet(Trim$(key)) = 1
+                Next
+                info = info & ", Movement type=" & ColLetter(mvtCol)
+                If TrimS(hdr(mvtCol)) <> "" Then info = info & " (""" & TrimS(hdr(mvtCol)) & """)"
+            Else
+                info = info & U(", Movement type=(kh\u00f4ng c\u00f3 c\u1ed9t -> l\u1ea5y t\u1ea5t c\u1ea3 d\u00f2ng)")
+            End If
+        End If
+    End If
 
     ' Doc du lieu 1 lan ca vung (nhanh hon doc tung o rat nhieu)
-    Dim maxCol As Long, blk As Variant, nRows As Long, out() As Variant, i As Long
+    Dim maxCol As Long, blk As Variant, nRows As Long, out() As Variant, i As Long, nOut As Long
     maxCol = lastCol
     For Each key In Array("mat", "po", "bb", "qty", "car")
         If cols(key) > maxCol Then maxCol = cols(key)
     Next
+    If mvtCol > maxCol Then maxCol = mvtCol
     If lastRow >= startRow Then
         blk = ReadBlock(src, startRow, lastRow, maxCol)
         nRows = lastRow - startRow + 1
         ReDim out(0 To nRows - 1)
         For i = 1 To nRows
-            out(i - 1) = Array(startRow + i - 1, blk(i, cols("mat")), blk(i, cols("po")), blk(i, cols("bb")), blk(i, cols("qty")), _
+            If mvtCol > 0 Then
+                mv = CleanKey(blk(i, mvtCol))
+                If mv <> "" And Not mvtSet.Exists(mv) Then
+                    nSkipMvt = nSkipMvt + 1: skipList(mv) = DGet(skipList, mv) + 1
+                    GoTo NextSrcRow
+                End If
+            End If
+            out(nOut) = Array(startRow + i - 1, blk(i, cols("mat")), blk(i, cols("po")), blk(i, cols("bb")), blk(i, cols("qty")), _
                                IIf(cols("car") > 0, blk(i, IIf(cols("car") > 0, cols("car"), 1)), Empty))
+            nOut = nOut + 1
+NextSrcRow:
         Next
-        ReadSource = out
+        If nOut > 0 Then
+            ReDim Preserve out(0 To nOut - 1)
+            ReadSource = out
+        Else
+            ReadSource = Empty
+        End If
     Else
         ReadSource = Empty
     End If
+    If mvtCol > 0 Then
+        info = info & U(" \u2014 ch\u1ec9 l\u1ea5y MvT ") & mvtList
+        If nSkipMvt > 0 Then
+            Dim sk As String
+            For Each key In skipList.Keys: sk = sk & IIf(sk = "", "", ", ") & key & " x" & skipList(key): Next
+            info = info & U(", b\u1ecf qua ") & nSkipMvt & U(" d\u00f2ng MvT kh\u00e1c (") & sk & ")"
+        End If
+    End If
+    colInfo = info
     If opened Then wb.Close SaveChanges:=False
     Exit Function
 Fail:
     Dim en As Long, ed As String: en = Err.Number: ed = Err.Description
     If opened Then wb.Close SaveChanges:=False
     Err.Raise en, , ed
+End Function
+
+' O loc MvT -> "101,102,..." ; de trong / "Tat ca" / "*" / "-" = khong loc
+Private Function MvtFilterText(ByVal v As Variant) As String
+    Dim s As String
+    s = TrimS(v)
+    If s = "" Or s = "*" Or s = "-" Or LCase$(s) = LCase$(U("T\u1ea5t c\u1ea3")) Or LCase$(s) = "tat ca" Or LCase$(s) = "all" Then Exit Function
+    s = Replace(Replace(Replace(s, ";", ","), " ", ","), vbLf, ",")
+    Do While InStr(s, ",,") > 0: s = Replace(s, ",,", ","): Loop
+    If Left$(s, 1) = "," Then s = Mid$(s, 2)
+    If Right$(s, 1) = "," Then s = Left$(s, Len(s) - 1)
+    MvtFilterText = s
 End Function
 
 Private Function FindOpenWorkbook(ByVal path As String) As Workbook
@@ -570,6 +662,12 @@ Private Function DetectCol(hdr As Variant, kwd As Variant, used As Object) As Lo
                 For Each e In kwd(2)
                     If InStr(1, h, e, vbBinaryCompare) > 0 Then skip = True: Exit For
                 Next
+                ' Tieu de trung nguyen van 1 tu khoa (VD "Qty in Unit of Entry") thi khong ap tu loai tru
+                If skip Then
+                    For Each k In kwd(1)
+                        If h = k Then skip = False: Exit For
+                    Next
+                End If
                 If Not skip Then
                     toks = Tokens(h): s = 0
                     For Each k In kwd(1)
@@ -621,8 +719,8 @@ Private Function CleanRows(raw As Variant, ByVal label As String, warns As Colle
             qty = CDbl(rawQ)
         ElseIf sq = "" Then
             prob = JoinNote(prob, U("S\u1ed1 l\u01b0\u1ee3ng tr\u1ed1ng (t\u00ednh = 0)"))
-        ElseIf IsNumericStr(sq) Then
-            qty = Val(sq)
+        ElseIf ParseQty(sq, qty) Then
+            ' so dang chu (SAP: "20-", "1.000", "1,5") da doi sang so
         Else
             prob = JoinNote(prob, U("S\u1ed1 l\u01b0\u1ee3ng kh\u00f4ng ph\u1ea3i s\u1ed1 (t\u00ednh = 0)"))
         End If
@@ -639,6 +737,42 @@ NextRow:
     If n = 0 Then CleanRows = Empty: Exit Function
     ReDim Preserve out(0 To n - 1)
     CleanRows = out
+End Function
+
+' Doc so luong dang chu: "20", "-20", "20-" (SAP ghi so am dau tru phia sau), "1.000" / "1,000" (phan nghin), "1,5" / "1.5"
+Private Function ParseQty(ByVal s As String, ByRef q As Double) As Boolean
+    Dim neg As Boolean, nDot As Long, nCom As Long, decSep As String, intPart As String
+    s = Replace(Replace(Trim$(s), " ", ""), ChrW(160), "")
+    If s = "" Then Exit Function
+    If Right$(s, 1) = "-" Then neg = True: s = Left$(s, Len(s) - 1)
+    If Left$(s, 1) = "-" And Not neg Then neg = True: s = Mid$(s, 2)
+    If s = "" Then Exit Function
+    nDot = Len(s) - Len(Replace(s, ".", "")): nCom = Len(s) - Len(Replace(s, ",", ""))
+    If nDot > 0 And nCom > 0 Then
+        ' ca 2 dau: dau xuat hien cuoi cung la dau thap phan
+        If InStrRev(s, ".") > InStrRev(s, ",") Then decSep = "." Else decSep = ","
+    ElseIf nDot + nCom = 1 Then
+        ' 1 dau: "1.000" / "1,000" (dung 3 so sau dau) -> phan nghin; con lai -> thap phan
+        If nDot = 1 Then decSep = "." Else decSep = ","
+        If s Like "#*[.,]###" And Len(s) - InStr(s, decSep) = 3 Then
+            intPart = Left$(s, InStr(s, decSep) - 1)
+            If Len(intPart) <= 3 And IsAllDigits(intPart) And intPart <> "0" Then decSep = ""
+        End If
+    ElseIf nDot > 1 Then
+        decSep = ","   ' 1.000.000 -> dau cham la phan nghin
+    ElseIf nCom > 1 Then
+        decSep = "."
+    End If
+    If decSep = "." Then
+        s = Replace(s, ",", "")
+    ElseIf decSep = "," Then
+        s = Replace(Replace(s, ".", ""), ",", ".")
+    Else
+        s = Replace(Replace(s, ".", ""), ",", "")
+    End If
+    If Not IsNumericStr(s) Then Exit Function
+    q = Val(s): If neg Then q = -q
+    ParseQty = True
 End Function
 
 Private Function IsNumericStr(ByVal s As String) As Boolean
@@ -900,6 +1034,23 @@ Private Sub ApplyUI(ws As Worksheet)
         AddVal ws.Cells(pi(0), C_NCC), xlValidateWholeNumber, "0", "50", pi(1), pi(2)
     Next
     With ws.Range(ws.Cells(R_BATCH, 1), ws.Cells(R_TRIP, 2)).Borders
+        .LineStyle = xlContinuous: .Color = RGB(180, 180, 180)
+    End With
+    ' Loc Movement type (chi file MB51, o C16). Phai dat dinh dang chu truoc, neu khong Excel doi "101,102" thanh so
+    ws.Cells(R_MVT, 1).Value2 = U("L\u1ecdc Movement type (MB51)")
+    With ws.Cells(R_MVT, C_NCC)
+        .Value2 = U("(ch\u1ec9 \u00e1p d\u1ee5ng cho file MB51 \u2192)")
+        .Font.Italic = True: .Font.Color = RGB(128, 128, 128): .HorizontalAlignment = xlRight
+    End With
+    With ws.Cells(R_MVT, C_MB)
+        .NumberFormat = "@"
+        If TrimS(.Value2) = "" Then .Value2 = DEF_MVT
+        .Locked = False: .Interior.Color = CLR_YELLOW: .HorizontalAlignment = xlLeft
+    End With
+    AddVal ws.Cells(R_MVT, C_MB), xlValidateInputOnly, "", "", U("L\u1ecdc Movement type (MB51)"), _
+        U("File MB51 c\u00f3 c\u1ed9t Movement type th\u00ec ch\u1ec9 l\u1ea5y c\u00e1c m\u00e3 n\u00e0y (c\u00e1ch nhau d\u1ea5u ph\u1ea9y). ") & _
+        U("M\u1eb7c \u0111\u1ecbnh: ") & DEF_MVT & U(" (GR + h\u1ee7y GR + tr\u1ea3 h\u00e0ng). G\u00f5 'T\u1ea5t c\u1ea3' \u0111\u1ec3 kh\u00f4ng l\u1ecdc.")
+    With ws.Range(ws.Cells(R_MVT, 1), ws.Cells(R_MVT, 3)).Borders
         .LineStyle = xlContinuous: .Color = RGB(180, 180, 180)
     End With
     ws.Cells(2, 1).Value2 = U("\u25b6 Ch\u1ecdn 2 file (n\u00fat b\u00ean ph\u1ea3i) -> b\u1ea5m CHECK CH\u00caNH L\u1ec6CH. C\u1ed9t \u0111\u1ec3 '") & AUTO & U("' th\u00ec tool t\u1ef1 nh\u1eadn theo ti\u00eau \u0111\u1ec1.")
@@ -1182,10 +1333,10 @@ End Function
 Private Function WriteSummary(wb As Workbook, ctrlWs As Worksheet, N As Variant, ByVal nN As Long, M As Variant, ByVal nM As Long, _
                               sheetOf As Object, ByVal nWarn As Long, carOf As Object, pos As Variant, boOf As Object, _
                               ByVal cpc As Long, ByVal colNote As String) As Object
-    Dim sumN As Scripting.Dictionary, sumM As Scripting.Dictionary, inN As Scripting.Dictionary, inM As Scripting.Dictionary
+    Dim sumN As Object, sumM As Object, inN As Object, inM As Object
     Dim i As Long, r As Variant, po As String
-    Set sumN = New Scripting.Dictionary: Set sumM = New Scripting.Dictionary
-    Set inN = New Scripting.Dictionary: Set inM = New Scripting.Dictionary
+    Set sumN = NewDict(): Set sumM = NewDict()
+    Set inN = NewDict(): Set inM = NewDict()
     For i = 0 To nN - 1
         r = N(i): po = r(F_PO)
         If sumN.Exists(po) Then sumN(po) = sumN(po) + r(F_QTY) Else sumN.Add po, r(F_QTY): inN.Add po, 1
@@ -1293,7 +1444,7 @@ Private Function WriteSummary(wb As Workbook, ctrlWs As Worksheet, N As Variant,
         Next
     End If
     ws.Range(ws.Cells(r1, 7), ws.Cells(rN, 9)).HorizontalAlignment = xlCenter
-    ws.Range(ws.Cells(rHdr, 1), ws.Cells(rN, NC)).AutoFilter   ' loc theo Dong xe / Trang thai / Bo cau
+    SetAutoFilter ws.Range(ws.Cells(rHdr, 1), ws.Cells(rN, NC))   ' loc theo Dong xe / Trang thai / Bo cau
     If Not carOf Is Nothing Then WriteCarTable ws, cars.Keys, r1, rN
     AutoFitCols ws, NC
     ws.Columns(1).ColumnWidth = 16: ws.Columns(2).ColumnWidth = 12: ws.Columns(3).ColumnWidth = 15
@@ -1422,7 +1573,7 @@ Private Sub WriteWarnings(wb As Workbook, afterWs As Worksheet, warns As Collect
     Set body = ws.Range(ws.Cells(5, 1), ws.Cells(4 + warns.Count, 7))
     body.Interior.Color = CLR_WARN_BG: body.Font.Color = CLR_WARN_FT
     body.Borders.LineStyle = xlContinuous: body.Borders.Color = CLR_GRID
-    ws.Range(ws.Cells(4, 1), ws.Cells(4 + warns.Count, 7)).AutoFilter
+    SetAutoFilter ws.Range(ws.Cells(4, 1), ws.Cells(4 + warns.Count, 7))
     AutoFitCols ws, 7: ws.Columns(1).ColumnWidth = 10
 End Sub
 
@@ -1520,7 +1671,7 @@ End Function
 Private Function CleanKey(ByVal v As Variant) As String
     If IsEmpty(v) Or IsNull(v) Or IsError(v) Then Exit Function
     If VarType(v) = vbDouble Or VarType(v) = vbCurrency Or VarType(v) = vbLong Or VarType(v) = vbInteger Then
-        If v = Int(v) And Abs(v) < 1E+15 Then CleanKey = CStr(CDec(v)) Else CleanKey = CStr(v)
+        If v = Int(v) And Abs(v) < 1E+15 Then CleanKey = Format$(v, "0") Else CleanKey = CStr(v)   ' Mac khong co CDec
     Else
         CleanKey = TrimS(v)
     End If
@@ -1555,7 +1706,11 @@ End Function
 Private Function PickFile(ByVal title As String) As String
     Dim f As Variant
     If gSilent Then Exit Function
+#If Mac Then
+    f = Application.GetOpenFilename()
+#Else
     f = Application.GetOpenFilename(FileFilter:="Excel (*.xls;*.xlsx;*.xlsm;*.csv),*.xls;*.xlsx;*.xlsm;*.csv", Title:=title)
+#End If
     If VarType(f) = vbBoolean Then Exit Function
     PickFile = CStr(f)
 End Function
@@ -1611,7 +1766,11 @@ Private Sub Trace(ByVal s As String)
     Dim f As Integer
     If Not TRACE_ON Then Exit Sub
     f = FreeFile
+#If Mac Then
+    Open Environ$("TMPDIR") & "doisoat_trace.txt" For Append As #f
+#Else
     Open Environ$("TEMP") & "\doisoat_trace.txt" For Append As #f
+#End If
     Print #f, Format(Now, "hh:nn:ss") & "." & Format((Timer * 1000) Mod 1000, "000") & " " & s
     Close #f
 End Sub
@@ -1629,7 +1788,25 @@ Private Sub Msg(ByVal s As String)
         End If
     Else
         Dim cap As String: cap = U("Tool \u0110\u1ed1i So\u00e1t NCC <-> MB51")
+#If Mac Then
+        MsgBox s, vbInformation, cap
+#Else
         MessageBoxW Application.hWnd, StrPtr(s), StrPtr(cap), &H40 Or &H40000
+#End If
     End If
 End Sub
 
+
+' Bat bo loc cho bang. Excel Mac hay loi khi goi .AutoFilter khong tham so -> thu Field:=1; van loi thi bo qua (chi la tien ich)
+Private Sub SetAutoFilter(rng As Range)
+    On Error Resume Next
+    If rng.Worksheet.AutoFilterMode Then rng.Worksheet.AutoFilterMode = False
+    Err.Clear
+    rng.AutoFilter
+    If Err.Number <> 0 Then
+        Err.Clear
+        rng.Rows(1).Cells(1, 1).Select
+        rng.AutoFilter Field:=1
+    End If
+    On Error GoTo 0
+End Sub

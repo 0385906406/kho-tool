@@ -7,8 +7,8 @@ module.exports = [
     id: 'doisoat',
     name: 'Tool Đối Soát NCC ↔ MB51',
     code: 'ToolDoiSoat',
-    version: '2026.10.20',
-    platform: 'Microsoft Excel (VBA) · WPS (JS)',
+    version: '2026.10.21',
+    platform: 'Microsoft Excel (VBA, Windows + Mac) · WPS (JS)',
     summary: 'So số lượng NCC đã giao với GR trên MB51 theo từng SA/PO, kiểm tra bộ cầu theo xe và chỉ ra chuyến, biên bản bị lệch. Có 2 bản: Microsoft Excel và WPS Office.',
     features: [
       'Mỗi SA/PO một dòng, NCC đã giao và GR tính bằng công thức SUMIFS',
@@ -16,7 +16,9 @@ module.exports = [
       'Tổng hợp theo dòng xe: VF5, VF6, VF7, VF7 Pro, VF8, VF9, Limo',
       'Soi lệch theo khoảng biên bản (BB) dựa trên tờ đầu GR',
       'Sheet Cảnh báo cho dòng dữ liệu thiếu PO, thiếu mã, số lượng sai',
-      'Tự nhận cột theo tiêu đề; 30.000 dòng: WPS ~5 giây, Excel ~30 giây',
+      'Tự nhận cột theo tiêu đề, kể cả tên cột MB51 của SAP (Purchase order, Reference, Qty in Unit of Entry)',
+      'Bản Excel: lọc Movement type cho MB51 (mặc định 101, 102, 122, 123, 161, 162), đọc số âm kiểu SAP "5-"',
+      '30.000 dòng: WPS ~5 giây, Excel ~30 giây',
     ],
     steps: [
       'Tải đúng bản: máy dùng Microsoft Excel → bản "Dùng cho Microsoft Excel"; máy dùng WPS → bản "Dùng cho WPS Office". Giải nén gói .zip.',
@@ -39,18 +41,23 @@ module.exports = [
     // primary = nút tải lớn (mỗi bản 1 nút, có ghi chú); còn lại = tải lẻ
     // webOnly = chỉ có ở bản web độc lập (claude.ai không cho tải .xlsm / .bas)
     files: [
-      { label: 'Dùng cho Microsoft Excel', name: 'ToolDoiSoat_DungCho_MicrosoftExcel_2026-10-20.zip', src: 'ToolDoiSoat_DungCho_MicrosoftExcel_2026-10-20.zip', kind: 'zip',
-        primary: true, edition: 'Excel', note: 'Máy có Microsoft Office / Excel 2016–365 (macro VBA)' },
+      { label: 'Dùng cho Microsoft Excel', name: 'ToolDoiSoat_DungCho_MicrosoftExcel_2026-10-21.zip', src: 'ToolDoiSoat_DungCho_MicrosoftExcel_2026-10-21.zip', kind: 'zip',
+        primary: true, edition: 'Excel', note: 'Máy có Microsoft Office / Excel 2016–365, Windows hoặc Mac (macro VBA)' },
       { label: 'Dùng cho WPS Office', name: 'ToolDoiSoat_DungCho_WPSOffice_2026-10-20.zip', src: 'ToolDoiSoat_DungCho_WPSOffice_2026-10-20.zip', kind: 'zip',
         primary: true, edition: 'WPS', note: 'Máy dùng WPS Office / WPS Spreadsheets (macro JS)' },
       { label: 'File tool — Microsoft Excel', name: 'ToolDoiSoat_MicrosoftExcel.xlsm', src: 'dist/ToolDoiSoat_MicrosoftExcel.xlsm', kind: 'xlsm', webOnly: true },
       { label: 'File tool — WPS Office', name: 'ToolDoiSoat_WPSOffice.xlsm', src: 'dist/ToolDoiSoat_WPSOffice.xlsm', kind: 'xlsm', webOnly: true },
       { label: 'File mẫu NCC (dùng chung)', name: 'NCC_mau.xlsx', src: 'dist/NCC_mau.xlsx', kind: 'xlsx' },
       { label: 'File mẫu MB51 (dùng chung)', name: 'MB51_mau.xlsx', src: 'dist/MB51_mau.xlsx', kind: 'xlsx' },
+      { label: 'File mẫu MB51 kiểu SAP (có Movement type)', name: 'MB51_SAP_mau.csv', src: 'dist/MB51_SAP_mau.csv', kind: 'csv' },
       { label: 'Mã nguồn — Microsoft Excel (VBA)', name: 'MaNguon_MicrosoftExcel_VBA.bas', src: 'dist/MaNguon_MicrosoftExcel_VBA.bas', kind: 'bas', webOnly: true },
+      { label: 'Mã nguồn — Microsoft Excel (lớp Dict cho Mac)', name: 'MaNguon_MicrosoftExcel_Dict.cls', src: 'dist/MaNguon_MicrosoftExcel_Dict.cls', kind: 'cls', webOnly: true },
       { label: 'Mã nguồn — WPS Office (JS)', name: 'MaNguon_WPSOffice_JS.txt', src: 'dist/MaNguon_WPSOffice_JS.txt', kind: 'txt' },
     ],
     changes: [
+      '2026.10.21 — Bản Excel chạy được cả trên Excel cho Mac (trước chỉ chạy Windows)',
+      '2026.10.21 — Sửa lỗi nút Chọn file NCC / Chọn file MB51 báo lỗi 1004',
+      '2026.10.21 — MB51 từ SAP: nhận cột Qty in Unit of Entry, lọc Movement type, đọc số âm "5-"',
       'Thêm bản Microsoft Excel (VBA): giao diện, nút bấm và kết quả giống bản WPS',
       'Kiểm tra bộ cầu 4 mã / xe và 16 cái / chuyến',
       'Cột và bảng tổng theo dòng xe VinFast',

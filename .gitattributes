@@ -1,2 +1,4 @@
 # Giữ nguyên xuống dòng CRLF cho file VBA (Import trong Excel cần CRLF)
 *.bas binary
+*.cls binary
+*.csv binary

@@ -4,37 +4,75 @@
 Phát triển bởi Nguyễn Viết Dương
 
 Trong gói này
-  ToolDoiSoat_MicrosoftExcel.xlsm  File tool (macro VBA). Mở bằng Microsoft Excel.
+  ToolDoiSoat_MicrosoftExcel.xlsm  File tool (macro VBA). Mở bằng Microsoft Excel (Windows hoặc Mac).
   NCC_mau.xlsx            File mẫu phía nhà cung cấp (số liệu giả lập để chạy thử).
-  MB51_mau.xlsx           File mẫu xuất MB51 từ SAP (số liệu giả lập để chạy thử).
-  MaNguon_MicrosoftExcel_VBA.bas   Mã nguồn VBA (Alt+F11 -> File -> Import File... nếu cần nạp lại).
+  MB51_mau.xlsx           File mẫu MB51 đơn giản (số liệu giả lập để chạy thử).
+  MB51_SAP_mau.csv        File mẫu MB51 giống file SAP xuất thật (cột tiếng Anh của SAP,
+                          có Movement type 101/102/311, số âm kiểu SAP "5-").
+  MaNguon_MicrosoftExcel_VBA.bas   Mã nguồn VBA module chính.
+  MaNguon_MicrosoftExcel_Dict.cls  Mã nguồn lớp Dict (thay Scripting.Dictionary khi chạy trên Mac).
 
 Yêu cầu
-  - Microsoft Excel 2016 / 2019 / 2021 / Microsoft 365 trên máy tính Windows.
+  - Microsoft Excel 2016 / 2019 / 2021 / Microsoft 365, trên Windows HOẶC Mac.
   - Excel bản web (chạy trên trình duyệt) KHÔNG chạy được macro.
 
 Lần đầu mở file
+  Windows:
   1. Giải nén toàn bộ gói ra một thư mục.
   2. Nếu Excel hiện dải ĐỎ "Microsoft đã chặn macro..." (file tải từ mạng):
        đóng Excel -> chuột phải ToolDoiSoat_MicrosoftExcel.xlsm -> Properties
        -> tick "Unblock" (Bỏ chặn) -> OK -> mở lại file.
   3. Nếu hiện dải VÀNG "Security Warning ... Enable Content" -> bấm "Enable Content".
   (Máy công ty có chính sách chặn macro thì nhờ IT cho phép file này.)
+  Mac:
+  1. Mở file -> hộp thoại hỏi macro -> bấm "Enable Macros" (Bật macro).
+  2. Lần đầu tool mở file NCC/MB51, Mac có thể hỏi "Cấp quyền truy cập" -> bấm Select/Grant.
+
+LẤY FILE MB51 TỪ SAP LOGON
+  1. SAP Logon -> đăng nhập -> T-code MB51.
+  2. Màn hình chọn: nhập Plant, Posting Date (ngày cần đối soát), Vendor (nếu cần)
+     và Movement Type 101 đến 102 (thêm 122, 123, 161, 162 nếu có trả hàng).
+     Có thể nhập luôn danh sách PO/SA ở ô Purchase Order.
+  3. Execute (F8). Trên danh sách: Menu List -> Export -> Spreadsheet
+     (hoặc nút "Export / Spreadsheet") -> chọn định dạng Excel (.xlsx) -> lưu file.
+  4. Layout nên có các cột: Material, Movement type, Qty in Unit of Entry (hoặc Quantity),
+     Purchase order, Reference. Tool tự nhận các tên cột này.
+     "Reference" (Tham chiếu) = số biên bản (BB) tờ đầu khi làm GR.
 
 Cách dùng
   1. Sheet Control: bấm "Chọn file NCC" và "Chọn file MB51"
-     (chạy thử thì chọn 2 file mẫu NCC_mau.xlsx và MB51_mau.xlsx).
+     (chạy thử thì chọn NCC_mau.xlsx và MB51_mau.xlsx hoặc MB51_SAP_mau.csv).
   2. Bấm "CHECK CHÊNH LỆCH".
   3. Xem sheet "Tổng hợp" (mỗi SA/PO 1 dòng) và các sheet chi tiết phía sau.
+     Dòng 4 của sheet Tổng hợp ghi rõ tool đã dùng cột nào ở mỗi file, và số dòng
+     Movement type đã bị bỏ qua -> nên liếc qua để chắc tool đọc đúng cột.
   4. Bấm "Lưu kết quả (.xlsx)" để lưu lại kết quả của ngày.
 
 Thông số trên sheet Control (ô vàng)
   - Cột: để "Tự động" -> tool tự nhận cột theo dòng tiêu đề.
+    Tự nhận sai thì chọn chữ cái cột trong danh sách (A, B, C...).
+  - Tên sheet / Dòng bắt đầu đọc: dòng ngay trên "Dòng bắt đầu đọc" phải là dòng TIÊU ĐỀ.
+    File chỉ có 1 sheet thì tool tự dùng sheet đó.
   - Số tờ chuẩn / 1 lần GR: chỉ để cảnh báo khi 1 lần GR gộp khác số tờ.
   - Số mã cầu / 1 xe (mặc định 4) và Số xe / 1 chuyến (mặc định 4):
     1 chuyến (1 BB) = 4 xe x 4 mã = 16 cái. Đặt 0 để tắt kiểm tra bộ cầu.
+  - Lọc Movement type (MB51) — ô C16, mặc định 101,102,122,123,161,162:
+    nếu file MB51 có cột Movement type, tool chỉ cộng các mã này
+    (101 = GR, 102 = hủy GR, 122/123 = trả hàng NCC, 161/162 = trả hàng theo PO).
+    Các dòng khác (103, 105, 311, 321...) bị bỏ qua để không cộng trùng.
+    Gõ "Tất cả" để không lọc. File không có cột Movement type thì tool lấy hết.
+  - Số lượng dạng chữ kiểu SAP được đọc đúng: "20-" = -20, "1.000" = 1000, "1,5" = 1,5.
 
 Lưu ý
   - Mỗi lần CHECK, tool chỉ xóa các sheet do nó tạo ra; sheet riêng của bạn được giữ nguyên.
   - Muốn sửa tự do sheet Control: Review -> Unprotect Sheet (không có mật khẩu).
-  - Số liệu trong 2 file mẫu là dữ liệu giả lập để chạy thử, không phải PO thật.
+  - Số BB so sánh theo dạng chữ: "0026" và "26" là 2 số khác nhau. Nếu NCC ghi BB không có
+    số 0 ở đầu mà SAP có (hoặc ngược lại) thì Tổng hợp vẫn đúng, chỉ phần chi tiết theo BB lệch.
+  - Số liệu trong các file mẫu là dữ liệu giả lập để chạy thử, không phải PO thật.
+
+Những gì đã sửa so với bản 2026.10.20
+  - Chạy được trên Excel cho Mac (bản cũ chỉ chạy Windows vì dùng scrrun.dll và MessageBoxW).
+  - Sửa lỗi nút "Chọn file NCC" / "Chọn file MB51" báo lỗi: dòng "InitK: ChonFile ..."
+    bị VBA hiểu "InitK:" là nhãn nên không khởi tạo tool.
+  - Nhận được cột "Qty in Unit of Entry" của SAP (bản cũ bỏ qua vì chứa chữ "unit").
+  - Thêm lọc Movement type cho MB51 và đọc số âm kiểu SAP "20-".
