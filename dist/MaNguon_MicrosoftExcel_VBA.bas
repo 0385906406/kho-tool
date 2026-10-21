@@ -32,6 +32,7 @@ Private Const R_PATH As Long = 4, R_SHEET As Long = 5, R_START As Long = 6, R_MA
 Private Const R_BB As Long = 9, R_SEQ As Long = 10, R_QTY As Long = 11, R_CAR As Long = 12, R_BATCH As Long = 13
 Private Const R_CODES As Long = 14, R_TRIP As Long = 15, R_MVT As Long = 16, R_NOTE As Long = 17
 Private Const DEF_MVT As String = "101,102,122,123,161,162"
+Private Const APP_VER As String = "2026.10.21"   ' doi so nay moi lan phat hanh ban moi
 Private Const C_NCC As Long = 2, C_MB As Long = 3, MAX_DETAIL As Long = 30, SUM_NC As Long = 11
 Private Const PASS As String = ""
 ' vi tri truong trong 1 dong du lieu
@@ -93,6 +94,10 @@ Private Function U(ByVal s As String) As String
         End If
     Loop
     U = out
+End Function
+
+Private Function AppTitle() As String
+    AppTitle = U("TOOL \u0110\u1ed0I SO\u00c1T NCC  <->  MB51 (GR)   \u2022   v") & APP_VER
 End Function
 
 Private Function ColList() As String
@@ -955,7 +960,7 @@ End Function
 Private Sub BuildControl(ws As Worksheet)
     Dim t As Range, h As Range, rr As Variant
     ws.Cells.Clear
-    ws.Cells(1, 1).Value2 = U("TOOL \u0110\u1ed0I SO\u00c1T NCC  <->  MB51 (GR)")
+    ws.Cells(1, 1).Value2 = AppTitle()
     Set t = MergeRange(ws, 1, 1, 1, 3)
     t.Font.Bold = True: t.Font.Size = 14: t.Font.Color = CLR_WHITE
     t.Interior.Color = CLR_HDR_BG: t.HorizontalAlignment = xlCenter
@@ -1057,7 +1062,8 @@ Private Sub ApplyUI(ws As Worksheet)
     ws.Cells(2, 1).Font.Bold = True: ws.Cells(2, 1).Font.Color = RGB(192, 0, 0)
     ws.Cells(R_NOTE, 1).Value2 = U("Ghi ch\u00fa: 1 BB = 1 chuy\u1ebfn giao. BB c\u1ee7a MB51 = s\u1ed1 BB T\u1edc \u0110\u1ea6U khi GR; tool chia kho\u1ea3ng BB c\u1ee7a NCC theo c\u00e1c t\u1edd \u0111\u1ea7u n\u00e0y. Ch\u1ec9 s\u1eeda \u0111\u01b0\u1ee3c \u00f4 v\u00e0ng.")
     ws.Cells(R_NOTE, 1).Font.Italic = True: ws.Cells(R_NOTE, 1).Font.Color = RGB(110, 110, 110)
-    ws.Cells(R_NOTE + 1, 1).Value2 = U("Ph\u00e1t tri\u1ec3n b\u1edfi Nguy\u1ec5n Vi\u1ebft D\u01b0\u01a1ng")
+    ws.Cells(1, 1).Value2 = AppTitle()   ' tieu de co so phien ban, cap nhat moi lan mo giao dien
+    ws.Cells(R_NOTE + 1, 1).Value2 = U("Ph\u00e1t tri\u1ec3n b\u1edfi Nguy\u1ec5n Vi\u1ebft D\u01b0\u01a1ng   \u2022   Phi\u00ean b\u1ea3n ") & APP_VER & U(" (Windows + Mac)")
     ws.Cells(R_NOTE + 1, 1).Font.Size = 9: ws.Cells(R_NOTE + 1, 1).Font.Color = RGB(128, 128, 128)
     ' O nhap canh trai het (so mac dinh canh phai -> nhin lech so voi chu)
     ws.Range(ws.Cells(R_PATH, C_NCC), ws.Cells(R_CAR, C_MB)).HorizontalAlignment = xlLeft
@@ -1355,7 +1361,7 @@ Private Function WriteSummary(wb As Workbook, ctrlWs As Worksheet, N As Variant,
     tt.Font.Bold = True: tt.Font.Size = 13: tt.Font.Color = CLR_WHITE
     tt.Interior.Color = CLR_HDR_BG: tt.HorizontalAlignment = xlCenter
     ws.Rows(1).RowHeight = 24
-    ws.Cells(2, 1).Value2 = U("S\u1ed1 SA/PO: ") & (UBound(pos) + 1) & U("   |   S\u1ed1 li\u1ec7u = SUMIFS t\u1eeb sheet ") & DATA_N & " / " & DATA_M & U(" (m\u1ed7i file = 1 ng\u00e0y)")
+    ws.Cells(2, 1).Value2 = U("S\u1ed1 SA/PO: ") & (UBound(pos) + 1) & U("   |   S\u1ed1 li\u1ec7u = SUMIFS t\u1eeb sheet ") & DATA_N & " / " & DATA_M & U(" (m\u1ed7i file = 1 ng\u00e0y)   |   Tool v") & APP_VER
     ws.Cells(2, 1).Font.Italic = True
     AddLink ws, ws.Cells(2, NC), CTRL, U("\u2190 V\u1ec1 ") & CTRL
     If nWarn > 0 Then
@@ -1787,7 +1793,7 @@ Private Sub Msg(ByVal s As String)
             If pr Then ProtectSheet w
         End If
     Else
-        Dim cap As String: cap = U("Tool \u0110\u1ed1i So\u00e1t NCC <-> MB51")
+        Dim cap As String: cap = U("Tool \u0110\u1ed1i So\u00e1t NCC <-> MB51  \u2022  v") & APP_VER
 #If Mac Then
         MsgBox s, vbInformation, cap
 #Else

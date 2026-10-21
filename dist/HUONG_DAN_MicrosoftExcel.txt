@@ -12,6 +12,13 @@ Trong gói này
   MaNguon_MicrosoftExcel_VBA.bas   Mã nguồn VBA module chính.
   MaNguon_MicrosoftExcel_Dict.cls  Mã nguồn lớp Dict (thay Scripting.Dictionary khi chạy trên Mac).
 
+BIẾT ĐANG DÙNG BẢN NÀO
+  Bản mới có số phiên bản ở tiêu đề sheet Control (ô A1):
+    TOOL ĐỐI SOÁT NCC  <->  MB51 (GR)   •   v2026.10.21
+  và ở dòng cuối: "Phát triển bởi Nguyễn Viết Dương • Phiên bản 2026.10.21 (Windows + Mac)".
+  Sheet Tổng hợp (dòng 2) và tiêu đề hộp thông báo cũng ghi "v2026.10.21".
+  Không thấy số phiên bản -> đang mở bản cũ, hãy tải lại file.
+
 Yêu cầu
   - Microsoft Excel 2016 / 2019 / 2021 / Microsoft 365, trên Windows HOẶC Mac.
   - Excel bản web (chạy trên trình duyệt) KHÔNG chạy được macro.
