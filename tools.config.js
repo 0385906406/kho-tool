@@ -58,6 +58,7 @@ module.exports = [
       '2026.10.21 — Bản Excel chạy được cả trên Excel cho Mac (trước chỉ chạy Windows)',
       '2026.10.21 — Sửa lỗi nút Chọn file NCC / Chọn file MB51 báo lỗi 1004',
       '2026.10.21 — MB51 từ SAP: nhận cột Qty in Unit of Entry, lọc Movement type, đọc số âm "5-"',
+      '2026.10.21 — Hiện số phiên bản "v2026.10.21" ở tiêu đề sheet Control để biết đang dùng bản mới',
       'Thêm bản Microsoft Excel (VBA): giao diện, nút bấm và kết quả giống bản WPS',
       'Kiểm tra bộ cầu 4 mã / xe và 16 cái / chuyến',
       'Cột và bảng tổng theo dòng xe VinFast',
